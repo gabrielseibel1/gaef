@@ -1,0 +1,11 @@
+services:
+  webserver:
+    build: .
+    ports:
+      - "8080:8080"
+  mongodb:
+    image: mongo:6.0.4
+    volumes:
+      - mongodb-data:/data/db
+volumes:
+  mongodb-data:
