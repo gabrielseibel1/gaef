@@ -49,15 +49,16 @@ func main() {
 	// instantiate and inject dependencies
 	auth := auth.New(userServiceURL)
 	store := store.New(client.Database(dbName).Collection(collectionName))
-	handler := handler.New(auth, store, store, store, store, store, store)
+	handler := handler.New(auth, store, store, store, store, store, store, store)
 	handlers := handlers{
-		auth:          handler,
-		onlyLeaders:   handler,
-		createGroup:   handler,
-		readAllGroups: handler,
-		readGroup:     handler,
-		updateGroup:   handler,
-		deleteGroup:   handler,
+		auth:                    handler,
+		onlyLeaders:             handler,
+		createGroup:             handler,
+		readParticipatingGroups: handler,
+		readLeadingGroups:       handler,
+		readGroup:               handler,
+		updateGroup:             handler,
+		deleteGroup:             handler,
 	}
 
 	// run http server
@@ -65,11 +66,13 @@ func main() {
 	api := server.Group("/api/v0/groups", handlers.auth.AuthMiddleware())
 	{
 		api.POST("/", handlers.createGroup.CreateGroupHandler())
-		api.GET("/", handlers.readAllGroups.ReadAllGroupsHandler())
+		api.GET("/participating", handlers.readParticipatingGroups.ReadParticipatingGroupsHandler())
+		api.GET("/leading", handlers.readLeadingGroups.ReadLeadingGroupsHandler())
 		api.GET("/:id", handlers.readGroup.ReadGroupHandler())
 
 		forLeaders := api.Group("", handlers.onlyLeaders.OnlyLeadersMiddleware())
 		{
+			forLeaders.GET("/leading/:id", handlers.readGroup.ReadGroupHandler())
 			forLeaders.PUT("/:id", handlers.updateGroup.UpdateGroupHandler())
 			forLeaders.DELETE("/:id", handlers.deleteGroup.DeleteGroupHandler())
 		}
@@ -78,13 +81,14 @@ func main() {
 }
 
 type handlers struct {
-	auth          AuthMiddleware
-	onlyLeaders   OnlyLeadersMiddleware
-	createGroup   CreateGroupHandler
-	readAllGroups ReadAllGroupsHandler
-	readGroup     ReadGroupHandler
-	updateGroup   UpdateGroupHandler
-	deleteGroup   DeleteGroupHandler
+	auth                    AuthMiddleware
+	onlyLeaders             OnlyLeadersMiddleware
+	createGroup             CreateGroupHandler
+	readParticipatingGroups ReadParticipatingGroupsHandler
+	readLeadingGroups       ReadLeadingGroupsHandler
+	readGroup               ReadGroupHandler
+	updateGroup             UpdateGroupHandler
+	deleteGroup             DeleteGroupHandler
 }
 
 type AuthMiddleware interface {
@@ -96,8 +100,11 @@ type OnlyLeadersMiddleware interface {
 type CreateGroupHandler interface {
 	CreateGroupHandler() gin.HandlerFunc
 }
-type ReadAllGroupsHandler interface {
-	ReadAllGroupsHandler() gin.HandlerFunc
+type ReadParticipatingGroupsHandler interface {
+	ReadParticipatingGroupsHandler() gin.HandlerFunc
+}
+type ReadLeadingGroupsHandler interface {
+	ReadLeadingGroupsHandler() gin.HandlerFunc
 }
 type ReadGroupHandler interface {
 	ReadGroupHandler() gin.HandlerFunc

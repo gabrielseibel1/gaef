@@ -11,32 +11,35 @@ import (
 )
 
 type Handler struct {
-	authenticator    Authenticator
-	leaderChecker    LeaderChecker
-	groupCreator     GroupCreator
-	userGroupsReader UserGroupsReader
-	groupReader      GroupReader
-	groupUpdater     GroupUpdater
-	groupDeleter     GroupDeleter
+	authenticator             Authenticator
+	leaderChecker             LeaderChecker
+	groupCreator              GroupCreator
+	participatingGroupsReader ParticipatingGroupsReader
+	leadingGroupsReader       LeadingGroupsReader
+	groupReader               GroupReader
+	groupUpdater              GroupUpdater
+	groupDeleter              GroupDeleter
 }
 
 func New(
 	authenticator Authenticator,
 	leaderChecker LeaderChecker,
 	groupCreator GroupCreator,
-	userGroupsReader UserGroupsReader,
+	participatingGroupsReader ParticipatingGroupsReader,
+	leadingGroupsReader LeadingGroupsReader,
 	groupReader GroupReader,
 	groupUpdater GroupUpdater,
 	groupDeleter GroupDeleter,
 ) Handler {
 	return Handler{
-		authenticator:    authenticator,
-		leaderChecker:    leaderChecker,
-		groupCreator:     groupCreator,
-		userGroupsReader: userGroupsReader,
-		groupReader:      groupReader,
-		groupUpdater:     groupUpdater,
-		groupDeleter:     groupDeleter,
+		authenticator:             authenticator,
+		leaderChecker:             leaderChecker,
+		groupCreator:              groupCreator,
+		participatingGroupsReader: participatingGroupsReader,
+		leadingGroupsReader:       leadingGroupsReader,
+		groupReader:               groupReader,
+		groupUpdater:              groupUpdater,
+		groupDeleter:              groupDeleter,
 	}
 }
 
@@ -94,11 +97,25 @@ func (h Handler) CreateGroupHandler() gin.HandlerFunc {
 	}
 }
 
-func (h Handler) ReadAllGroupsHandler() gin.HandlerFunc {
+func (h Handler) ReadParticipatingGroupsHandler() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		userID := ctx.GetString("userID")
 
-		groups, err := h.userGroupsReader.ReadGroups(ctx, userID)
+		groups, err := h.participatingGroupsReader.ReadParticipatingGroups(ctx, userID)
+		if err != nil {
+			ctx.JSON(http.StatusNotFound, ginErrorMessage(err))
+			return
+		}
+
+		ctx.JSON(http.StatusOK, gin.H{"groups": groups})
+	}
+}
+
+func (h Handler) ReadLeadingGroupsHandler() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		userID := ctx.GetString("userID")
+
+		groups, err := h.leadingGroupsReader.ReadLeadingGroups(ctx, userID)
 		if err != nil {
 			ctx.JSON(http.StatusNotFound, ginErrorMessage(err))
 			return
@@ -168,8 +185,11 @@ type LeaderChecker interface {
 type GroupCreator interface {
 	CreateGroup(ctx context.Context, group domain.Group) (domain.Group, error)
 }
-type UserGroupsReader interface {
-	ReadGroups(ctx context.Context, userID string) ([]domain.Group, error)
+type ParticipatingGroupsReader interface {
+	ReadParticipatingGroups(ctx context.Context, userID string) ([]domain.Group, error)
+}
+type LeadingGroupsReader interface {
+	ReadLeadingGroups(ctx context.Context, userID string) ([]domain.Group, error)
 }
 type GroupReader interface {
 	ReadGroup(ctx context.Context, id string) (domain.Group, error)

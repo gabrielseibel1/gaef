@@ -35,6 +35,7 @@ func (s MongoStore) IsLeader(ctx context.Context, userID string, groupID string)
 }
 
 func (s MongoStore) CreateGroup(ctx context.Context, group domain.Group) (domain.Group, error) {
+	group.ID = ""
 	res, err := s.collection.InsertOne(ctx, group)
 	if err != nil {
 		return domain.Group{}, err
@@ -44,14 +45,29 @@ func (s MongoStore) CreateGroup(ctx context.Context, group domain.Group) (domain
 	return group, nil
 }
 
-func (s MongoStore) ReadGroups(ctx context.Context, userID string) ([]domain.Group, error) {
-	// hexID, err := primitive.ObjectIDFromHex(userID)
-	// if err != nil {
-	// return nil, err
-	// }
-
+func (s MongoStore) ReadParticipatingGroups(ctx context.Context, userID string) ([]domain.Group, error) {
 	cursor, err := s.collection.Find(ctx, bson.M{
 		"members": bson.M{
+			"$elemMatch": bson.M{
+				"_id": userID,
+			},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var groups []domain.Group
+	if err := cursor.All(ctx, &groups); err != nil {
+		return nil, err
+	}
+	return groups, nil
+}
+
+func (s MongoStore) ReadLeadingGroups(ctx context.Context, userID string) ([]domain.Group, error) {
+	cursor, err := s.collection.Find(ctx, bson.M{
+		"leaders": bson.M{
 			"$elemMatch": bson.M{
 				"_id": userID,
 			},
