@@ -274,14 +274,14 @@ func TestService_Login_OK(t *testing.T) {
 	}
 
 	// run code under test
-	id, err := s.Login(dummyEmail, dummyPassword, dummyContext)
+	user, err := s.Login(dummyEmail, dummyPassword, dummyContext)
 
 	// assert good results and side-effects
 	if err != nil {
 		t.Errorf("Service.Login() error: %v, want nil", err.Error())
 	}
-	if id != mockReader.user.ID {
-		t.Errorf("Service.Login() = id: %v, want %v", id, mockReader.user.ID)
+	if *user != *domain.ToSimplifiedUser(mockReader.user) {
+		t.Errorf("Service.Login() = user: %v, want %v", *user, mockReader.user)
 	}
 	if mockReader.email != dummyEmail {
 		t.Errorf("Service.Login() read email: %v, want %v", mockReader.email, dummyEmail)
@@ -320,14 +320,14 @@ func TestService_Login_ErrReader(t *testing.T) {
 	}
 
 	// run code under test
-	id, err := s.Login(dummyEmail, dummyPassword, dummyContext)
+	user, err := s.Login(dummyEmail, dummyPassword, dummyContext)
 
 	// assert good results and side-effects
 	if err == nil {
 		t.Errorf("Service.Login() error: nil, want %v", mockReader.err.Error())
 	}
-	if id != "" {
-		t.Errorf("Service.Login() = id: %v, want ", id)
+	if user != nil {
+		t.Errorf("Service.Login() = user: %v, want nil", *user)
 	}
 	if mockReader.email != dummyEmail {
 		t.Errorf("Service.Login() read email: %v, want %v", mockReader.email, dummyEmail)
@@ -366,14 +366,14 @@ func TestService_Login_ErrVerifier(t *testing.T) {
 	}
 
 	// run code under test
-	id, err := s.Login(dummyEmail, dummyPassword, dummyContext)
+	user, err := s.Login(dummyEmail, dummyPassword, dummyContext)
 
 	// assert good results and side-effects
 	if err == nil {
 		t.Errorf("Service.Login() error: nil, want %v", mockPasswordVerifier.err.Error())
 	}
-	if id != "" {
-		t.Errorf("Service.Login() = id: %v, want ", id)
+	if user != nil {
+		t.Errorf("Service.Login() = user: %v, want nil", *user)
 	}
 	if mockReader.email != dummyEmail {
 		t.Errorf("Service.Login() read email: %v, want %v", mockReader.email, dummyEmail)
