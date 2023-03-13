@@ -17,7 +17,7 @@ type Creator interface {
 	Create(user *domain.User, password string, ctx context.Context) (string, error)
 }
 type Loginer interface {
-	Login(email, password string, ctx context.Context) (string, error)
+	Login(email, password string, ctx context.Context) (*domain.User, error)
 }
 type Reader interface {
 	Read(id string, ctx context.Context) (*domain.User, error)
@@ -41,6 +41,13 @@ type Handler struct {
 }
 
 const jwtTTL = time.Hour * 24 * 7
+const paramKeyAuthenticatedUserID = "AuthenticatedUserID"
+
+var messageErrorUnauthorized = gin.H{"error": "unauthorized"}
+var messageErrorMissingAuthorizationHeader = gin.H{"error": "missing authorization header"}
+var messageErrorInvalidToken = gin.H{"error": "invalid or expired token"}
+var messageErrorUserNotFound = gin.H{"error": "user not found"}
+var messageErrorMissingUserData = gin.H{"error": "missing user data"}
 
 func New(creator Creator, loginer Loginer, reader Reader, updater Updater, deleter Deleter, jwtSecret []byte) *Handler {
 	return &Handler{
@@ -57,7 +64,7 @@ func (sh Handler) JWTAuthMiddleware() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		authHeader := ctx.GetHeader("Authorization")
 		if authHeader == "" || len(authHeader) <= len("Bearer ") {
-			ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Missing authorization header"})
+			ctx.AbortWithStatusJSON(http.StatusUnauthorized, messageErrorMissingAuthorizationHeader)
 			return
 		}
 		authHeader = authHeader[len("Bearer "):]
@@ -65,26 +72,29 @@ func (sh Handler) JWTAuthMiddleware() gin.HandlerFunc {
 		token, err := jwt.Parse(authHeader, func(token *jwt.Token) (interface{}, error) {
 			return sh.jwtSecret, nil
 		})
-		fmt.Println(token)
 		if err != nil || !token.Valid {
-			ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid or expired token"})
+			ctx.AbortWithStatusJSON(http.StatusUnauthorized, messageErrorInvalidToken)
 			return
 		}
 
 		claims, ok := token.Claims.(jwt.MapClaims)
 		if !ok {
-			ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid token claims"})
+			ctx.AbortWithStatusJSON(http.StatusUnauthorized, messageErrorInvalidToken)
 			return
 		}
-		tokenUserID := claims["sub"].(string)
+		tokenUserID, ok := claims["sub"].(string)
+		if !ok {
+			ctx.AbortWithStatusJSON(http.StatusUnauthorized, messageErrorInvalidToken)
+			return
+		}
 
 		paramUserID := ctx.Param("id")
 		if paramUserID != "" && tokenUserID != paramUserID {
-			ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+			ctx.AbortWithStatusJSON(http.StatusUnauthorized, messageErrorUnauthorized)
 			return
 		}
 
-		ctx.Set("AuthenticatedUserID", tokenUserID)
+		ctx.Set(paramKeyAuthenticatedUserID, tokenUserID)
 
 		ctx.Next()
 	}
@@ -98,7 +108,7 @@ func (sh Handler) Signup() gin.HandlerFunc {
 			Password string `json:"password" binding:"required"` // TODO: password requirements validation
 		}
 		if err := ctx.ShouldBindJSON(&json); err != nil {
-			ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			ctx.JSON(http.StatusBadRequest, messageErrorMissingUserData)
 			return
 		}
 		user := &domain.User{
@@ -107,7 +117,7 @@ func (sh Handler) Signup() gin.HandlerFunc {
 		}
 		id, err := sh.creator.Create(user, json.Password, ctx)
 		if err != nil {
-			ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "email is taken"})
 			return
 		}
 		ctx.JSON(http.StatusCreated, gin.H{"id": id})
@@ -121,19 +131,13 @@ func (sh Handler) Login() gin.HandlerFunc {
 			Password string `json:"password" binding:"required"`
 		}
 		if err := ctx.ShouldBindJSON(&json); err != nil {
-			ctx.JSON(http.StatusBadRequest, gin.H{"error": "unauthorized"})
+			ctx.JSON(http.StatusBadRequest, messageErrorUnauthorized)
 			return
 		}
 
-		id, err := sh.loginer.Login(json.Email, json.Password, ctx)
+		user, err := sh.loginer.Login(json.Email, json.Password, ctx)
 		if err != nil {
-			ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-			return
-		}
-
-		user, err := sh.reader.Read(id, ctx)
-		if err != nil {
-			ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+			ctx.JSON(http.StatusUnauthorized, messageErrorUnauthorized)
 			return
 		}
 
@@ -145,7 +149,7 @@ func (sh Handler) Login() gin.HandlerFunc {
 		})
 		tokenString, err := token.SignedString(sh.jwtSecret)
 		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate token"})
 			return
 		}
 
@@ -155,17 +159,17 @@ func (sh Handler) Login() gin.HandlerFunc {
 
 func (sh Handler) GetIDFromToken() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		id := ctx.GetString("AuthenticatedUserID")
+		id := ctx.GetString(paramKeyAuthenticatedUserID)
 		ctx.JSON(http.StatusOK, gin.H{"id": id})
 	}
 }
 
 func (sh Handler) GetUserFromID() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		id := ctx.Param("id")
+		id := ctx.GetString(paramKeyAuthenticatedUserID)
 		user, err := sh.reader.Read(id, ctx)
 		if err != nil {
-			ctx.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			ctx.JSON(http.StatusNotFound, messageErrorUserNotFound)
 			return
 		}
 		ctx.JSON(http.StatusOK, gin.H{"user": user})
@@ -174,20 +178,22 @@ func (sh Handler) GetUserFromID() gin.HandlerFunc {
 
 func (sh Handler) UpdateUser() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
+		id := ctx.GetString(paramKeyAuthenticatedUserID)
+
 		var providedUser domain.User
 		if err := ctx.ShouldBindJSON(&providedUser); err != nil {
-			ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			ctx.JSON(http.StatusBadRequest, messageErrorMissingUserData)
 			return
 		}
 
-		if providedUser.ID != ctx.GetString("AuthenticatedUserID") {
-			ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		if !(id == providedUser.ID) {
+			ctx.JSON(http.StatusUnauthorized, messageErrorUnauthorized)
 			return
 		}
 
 		updatedUser, err := sh.updater.Update(&providedUser, ctx)
 		if err != nil {
-			ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			ctx.JSON(http.StatusNotFound, messageErrorUserNotFound)
 			return
 		}
 
@@ -197,11 +203,11 @@ func (sh Handler) UpdateUser() gin.HandlerFunc {
 
 func (sh Handler) DeleteUser() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		id := ctx.GetString("AuthenticatedUserID")
+		id := ctx.GetString(paramKeyAuthenticatedUserID)
 
 		err := sh.deleter.Delete(id, ctx)
 		if err != nil {
-			ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			ctx.JSON(http.StatusNotFound, messageErrorUserNotFound)
 			return
 		}
 		ctx.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("deleted user %s", id)})

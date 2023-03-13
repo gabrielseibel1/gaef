@@ -67,16 +67,16 @@ func (s Service) Create(user *domain.User, password string, ctx context.Context)
 	return s.creator.Create(domain.FromSimplifiedUser(user, hash), ctx)
 }
 
-func (ss Service) Login(email, password string, ctx context.Context) (string, error) {
+func (ss Service) Login(email, password string, ctx context.Context) (*domain.User, error) {
 	u, err := ss.byEmailReader.ReadSensitiveByEmail(email, ctx)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	err = ss.passwordVerifier.CompareHashAndPassword(u.HashedPassword, password)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return u.ID, nil
+	return domain.ToSimplifiedUser(u), nil
 }
 
 func (ss Service) Read(id string, ctx context.Context) (*domain.User, error) {
