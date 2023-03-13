@@ -4,6 +4,6 @@ cd ..
 docker compose up -d --build
 sleep 1s
 cd test
-go run .
+go test ./... --cover -v
 cd ..
 docker compose down --volumes
