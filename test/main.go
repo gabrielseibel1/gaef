@@ -47,10 +47,7 @@ func signUp(name, email, password string) (string, error) {
 		ID string `json:"id"`
 	}
 	err = json.NewDecoder(resp.Body).Decode(&respBody)
-	if err != nil {
-		return "", err
-	}
-	return respBody.ID, nil
+	return respBody.ID, err
 }
 
 func login(email, password string) (string, error) {
@@ -175,7 +172,35 @@ func deleteUser(token, id string) (string, error) {
 	return respBody.Message, nil
 }
 
+func readToken(token string) (string, error) {
+	req := http.Request{
+		Method: http.MethodGet,
+		URL: &url.URL{
+			Scheme: "http",
+			Host:   "localhost:8080",
+			Path:   "/api/v0/users/token-validation",
+		},
+		Header: make(http.Header),
+	}
+	req.Header.Add("Authorization", "Bearer "+token)
+	c := http.Client{}
+	resp, err := c.Do(&req)
+	if err != nil {
+		return "", err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("read token request returned status code %d", resp.StatusCode)
+	}
+	var respBody struct {
+		ID string `json:"id"`
+	}
+	err = json.NewDecoder(resp.Body).Decode(&respBody)
+	return respBody.ID, err
+}
+
 func main() {
+	fmt.Println("\nvvvvvvvvvv GAEF E2E TESTS vvvvvvvvvv")
+
 	name := "Gabriel de Souza Seibel"
 	email := "gabriel.seibel@tuta.io"
 	password := "test123"
@@ -190,13 +215,13 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("\n2. logged in with token %v\n\n", token)
+	fmt.Printf("\n2. logged in with token %v\n", token)
 
 	user, err := readUser(token, userID)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("\n3. read user as %v\n\n", user)
+	fmt.Printf("\n3. read user as %v\n", user)
 
 	user.Name = "Gabriel Seibel de Souza"
 	user.Email = "gabrielseibel1@gmail.com"
@@ -204,11 +229,19 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("\n4. updated user to %v\n\n", user)
+	fmt.Printf("\n4. updated user to %v\n", user)
 
 	message, err := deleteUser(token, userID)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("\n5. deleted user with message: %v\n\n", message)
+	fmt.Printf("\n5. deleted user with message: %v\n", message)
+
+	tokenID, err := readToken(token)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("\n6. validated token with id %v\n", tokenID)
+
+	fmt.Println("\n^^^^^^^^^^ GAEF E2E TESTS ^^^^^^^^^^")
 }
