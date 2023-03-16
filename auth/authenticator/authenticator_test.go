@@ -1,8 +1,7 @@
-package auth_test
+package authenticator
 
 import (
 	"context"
-	"github.com/gabrielseibel1/gaef/auth"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -93,7 +92,7 @@ func TestAuthenticator_GetAuthenticatedUserID(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			defer tt.server.Close()
-			a := auth.New(tt.server.URL)
+			a := New(tt.server.URL)
 			got, err := a.GetAuthenticatedUserID(tt.args.ctx, tt.args.token)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetAuthenticatedUserID() error = %v, wantErr %v", err, tt.wantErr)
