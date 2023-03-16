@@ -3,7 +3,7 @@ package domain
 import "time"
 
 type EncounterProposal struct {
-	ID           string
+	ID           string `bson:"_id,omitempty"`
 	Name         string
 	Description  string
 	Time         time.Time
