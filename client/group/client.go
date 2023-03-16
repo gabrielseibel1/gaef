@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/gabrielseibel1/client/domain"
+	"github.com/gabrielseibel1/gaef/client/domain"
 	"io"
 	"net/http"
 	"net/url"

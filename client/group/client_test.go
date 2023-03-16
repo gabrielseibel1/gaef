@@ -1,11 +1,11 @@
 package group
 
 import (
-	"github.com/gabrielseibel1/client/user"
 	"net/http"
 	"testing"
 
-	"github.com/gabrielseibel1/client/domain"
+	"github.com/gabrielseibel1/gaef/client/domain"
+	"github.com/gabrielseibel1/gaef/client/user"
 )
 
 func TestClient_CRUD_Localhost8081(t *testing.T) {
