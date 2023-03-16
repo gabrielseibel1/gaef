@@ -16,10 +16,10 @@ cd user || exit
 go test ./... --cover -count=1
 cd ..
 
-cd client || exit
 docker compose up -d --build
 sleep 1s
+cd client || exit
 go test ./... --cover -count=1
-docker compose down --volumes
 cd ..
+docker compose down --volumes
 
