@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/gabrielseibel1/gaef-user-service/domain"
+	"github.com/gabrielseibel1/gaef/user/domain"
 )
 
 type mockPasswordHasher struct {

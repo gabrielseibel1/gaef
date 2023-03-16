@@ -11,187 +11,10 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/gabrielseibel1/gaef-encounter-proposal-service/api"
-	"github.com/gabrielseibel1/gaef-encounter-proposal-service/domain"
+	"github.com/gabrielseibel1/gaef/encounter-proposal/api"
+	"github.com/gabrielseibel1/gaef/encounter-proposal/domain"
 	"github.com/gin-gonic/gin"
 )
-
-func TestAPI_AuthMiddleware_OK(t *testing.T) {
-	// prepare test setup
-
-	// setup request
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	req := &http.Request{
-		Header: make(http.Header),
-	}
-	jwt := "test-token"
-	req.Header.Add("Authorization", "Bearer "+jwt)
-	c.Request = req
-	// setup mocks
-	mockAuthenticator := mockAuthenticatedUserIDGetter{
-		id:  "test-user-id",
-		err: nil,
-	}
-
-	// run code under test
-
-	api.New(
-		&mockAuthenticator,
-		nil,
-		nil,
-		nil,
-		nil,
-		nil,
-		nil,
-		nil,
-		nil,
-	).AuthMiddleware()(c)
-
-	// assertions
-
-	// verify response body
-	if got, want := w.Body.String(), ""; got != want {
-		t.Fatalf("got %v, want %v", got, want)
-	}
-	// verify response status code
-	if got, want := w.Result().StatusCode, http.StatusOK; got != want {
-		t.Fatalf("got %v, want %v", got, want)
-	}
-	if got, want := c.GetString("userID"), mockAuthenticator.id; got != want {
-		t.Fatalf("got %v, want %v", got, want)
-	}
-	// verify mocks received values
-	if got, want := mockAuthenticator.ctx, c; got != want {
-		t.Fatalf("got %v, want %v", got, want)
-	}
-	if got, want := mockAuthenticator.token, jwt; got != want {
-		t.Fatalf("got %v, want %v", got, want)
-	}
-	// verify not stopped handler chain
-	if c.IsAborted() {
-		t.Fatalf("context was aborted")
-	}
-}
-
-func TestAPI_AuthMiddleware_AuthenticatorError(t *testing.T) {
-	// prepare test setup
-
-	// setup request
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	req := &http.Request{
-		Header: make(http.Header),
-	}
-	jwt := "test-token"
-	req.Header.Add("Authorization", "Bearer "+jwt)
-	c.Request = req
-	// setup mocks
-	mockAuthenticator := mockAuthenticatedUserIDGetter{
-		id:  "test-user-id",
-		err: errors.New("mock authenticator error"),
-	}
-
-	// run code under test
-
-	api.New(
-		&mockAuthenticator,
-		nil,
-		nil,
-		nil,
-		nil,
-		nil,
-		nil,
-		nil,
-		nil,
-	).AuthMiddleware()(c)
-
-	// assertions
-
-	// verify response body
-	var resp struct {
-		Error string
-	}
-	err := json.NewDecoder(w.Result().Body).Decode(&resp)
-	if err != nil {
-		t.Fatalf("unable to decode response body to json")
-	}
-	if got, want := resp.Error, "unauthorized"; got != want {
-		t.Fatalf("got %v, want %v", got, want)
-	}
-	// verify response status code
-	if got, want := w.Result().StatusCode, http.StatusUnauthorized; got != want {
-		t.Fatalf("got %v, want %v", got, want)
-	}
-	if got, want := c.GetString("userID"), ""; got != want {
-		t.Fatalf("got %v, want %v", got, want)
-	}
-	// verify mocks received values
-	if got, want := mockAuthenticator.ctx, c; got != want {
-		t.Fatalf("got %v, want %v", got, want)
-	}
-	if got, want := mockAuthenticator.token, jwt; got != want {
-		t.Fatalf("got %v, want %v", got, want)
-	}
-	// verify stopped handler chain
-	if !c.IsAborted() {
-		t.Fatalf("context was not aborted")
-	}
-}
-
-func TestAPI_AuthMiddleware_MissingHeader(t *testing.T) {
-	// prepare test setup
-
-	// setup request
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	req := &http.Request{}
-	c.Request = req
-	// setup mocks
-	mockAuthenticator := mockAuthenticatedUserIDGetter{
-		id:  "test-user-id",
-		err: nil,
-	}
-
-	// run code under test
-
-	api.New(
-		&mockAuthenticator,
-		nil,
-		nil,
-		nil,
-		nil,
-		nil,
-		nil,
-		nil,
-		nil,
-	).AuthMiddleware()(c)
-
-	// assertions
-
-	// verify response body
-	var resp struct {
-		Error string
-	}
-	err := json.NewDecoder(w.Result().Body).Decode(&resp)
-	if err != nil {
-		t.Fatalf("unable to decode response body to json")
-	}
-	if got, want := resp.Error, "unauthorized"; got != want {
-		t.Fatalf("got %v, want %v", got, want)
-	}
-	// verify response status code
-	if got, want := w.Result().StatusCode, http.StatusUnauthorized; got != want {
-		t.Fatalf("got %v, want %v", got, want)
-	}
-	if got, want := c.GetString("userID"), ""; got != want {
-		t.Fatalf("got %v, want %v", got, want)
-	}
-	// verify stopped handler chain
-	if !c.IsAborted() {
-		t.Fatalf("context was not aborted")
-	}
-}
 
 func TestAPI_EPCreatorGroupLeaderCheckerMiddleware_OK(t *testing.T) {
 	// prepare test setup
@@ -221,7 +44,6 @@ func TestAPI_EPCreatorGroupLeaderCheckerMiddleware_OK(t *testing.T) {
 	// run code under test
 
 	api.New(
-		nil,
 		nil,
 		nil,
 		nil,
@@ -288,7 +110,6 @@ func TestAPI_EPCreatorGroupLeaderCheckerMiddleware_ReaderError(t *testing.T) {
 	// run code under test
 
 	api.New(
-		nil,
 		nil,
 		nil,
 		nil,
@@ -365,7 +186,6 @@ func TestAPI_EPCreatorGroupLeaderCheckerMiddleware_LeaderError(t *testing.T) {
 		nil,
 		nil,
 		nil,
-		nil,
 		&mockByIDEPReader,
 		nil,
 		nil,
@@ -439,7 +259,6 @@ func TestAPI_EPCreatorGroupLeaderCheckerMiddleware_LeaderFalse(t *testing.T) {
 		nil,
 		nil,
 		nil,
-		nil,
 		&mockByIDEPReader,
 		nil,
 		nil,
@@ -510,7 +329,6 @@ func TestAPI_EPCreationHandler_OK(t *testing.T) {
 	// run code under test
 
 	api.New(
-		nil,
 		&mockEPCreator,
 		nil,
 		nil,
@@ -565,7 +383,6 @@ func TestAPI_EPCreationHandler_BadRequest(t *testing.T) {
 	// run code under test
 
 	api.New(
-		nil,
 		&mockEPCreator,
 		nil,
 		nil,
@@ -622,7 +439,6 @@ func TestAPI_EPCreationHandler_CreatorError(t *testing.T) {
 	// run code under test
 
 	api.New(
-		nil,
 		&mockEPCreator,
 		nil,
 		nil,
@@ -677,7 +493,6 @@ func TestAPI_EPReadingAllHandler_OK(t *testing.T) {
 
 	api.New(
 		nil,
-		nil,
 		&mockPagedEPsReader,
 		nil,
 		nil,
@@ -731,7 +546,6 @@ func TestAPI_EPReadingAllHandler_BadRequest(t *testing.T) {
 
 	api.New(
 		nil,
-		nil,
 		&mockPagedEPsReader,
 		nil,
 		nil,
@@ -777,7 +591,6 @@ func TestAPI_EPReadingAllHandler_ReaderError(t *testing.T) {
 	// run code under test
 
 	api.New(
-		nil,
 		nil,
 		&mockPagedEPsReader,
 		nil,
@@ -834,7 +647,6 @@ func TestAPI_EPReadingByUserHandler_OK(t *testing.T) {
 	api.New(
 		nil,
 		nil,
-		nil,
 		&mockByUserEPsReader,
 		nil,
 		nil,
@@ -887,7 +699,6 @@ func TestAPI_EPReadingByUserHandler_ReaderError(t *testing.T) {
 	// run code under test
 
 	api.New(
-		nil,
 		nil,
 		nil,
 		&mockByUserEPsReader,
@@ -947,7 +758,6 @@ func TestAPI_EPReadingByIDHandler_OK(t *testing.T) {
 		nil,
 		nil,
 		nil,
-		nil,
 		&mockByIDEPReader,
 		nil,
 		nil,
@@ -1001,7 +811,6 @@ func TestAPI_EPReadingByIDHandler_ReaderError(t *testing.T) {
 	// run code under test
 
 	api.New(
-		nil,
 		nil,
 		nil,
 		nil,
@@ -1072,7 +881,6 @@ func TestAPI_EPUpdateHandler_OK(t *testing.T) {
 		nil,
 		nil,
 		nil,
-		nil,
 		&mockEPUpdater,
 		nil,
 		nil,
@@ -1125,7 +933,6 @@ func TestAPI_EPUpdateHandler_BadRequest(t *testing.T) {
 	// run code under test
 
 	api.New(
-		nil,
 		nil,
 		nil,
 		nil,
@@ -1196,7 +1003,6 @@ func TestAPI_EPUpdateHandler_MismatchingID(t *testing.T) {
 		nil,
 		nil,
 		nil,
-		nil,
 		&mockEPUpdater,
 		nil,
 		nil,
@@ -1263,7 +1069,6 @@ func TestAPI_EPUpdateHandler_UpdaterError(t *testing.T) {
 		nil,
 		nil,
 		nil,
-		nil,
 		&mockEPUpdater,
 		nil,
 		nil,
@@ -1316,7 +1121,6 @@ func TestAPI_EPDeletionHandler_OK(t *testing.T) {
 		nil,
 		nil,
 		nil,
-		nil,
 		&mockEPDeleter,
 		nil,
 		nil,
@@ -1363,7 +1167,6 @@ func TestAPI_EPDeletionHandler_DeleterError(t *testing.T) {
 	// run code under test
 
 	api.New(
-		nil,
 		nil,
 		nil,
 		nil,
@@ -1442,7 +1245,6 @@ func TestAPI_AppCreationHandler_OK(t *testing.T) {
 		nil,
 		nil,
 		nil,
-		nil,
 		&mockAppender,
 		&mockGroupLeaderChecker,
 	).AppCreationHandler()(c)
@@ -1511,7 +1313,6 @@ func TestAPI_AppCreationHandler_BadRequest(t *testing.T) {
 	// run code under test
 
 	api.New(
-		nil,
 		nil,
 		nil,
 		nil,
@@ -1602,7 +1403,6 @@ func TestAPI_AppCreationHandler_LeaderCheckerFalse(t *testing.T) {
 		nil,
 		nil,
 		nil,
-		nil,
 		&mockAppender,
 		&mockGroupLeaderChecker,
 	).AppCreationHandler()(c)
@@ -1681,7 +1481,6 @@ func TestAPI_AppCreationHandler_LeaderCheckerError(t *testing.T) {
 	// run code under test
 
 	api.New(
-		nil,
 		nil,
 		nil,
 		nil,
@@ -1772,7 +1571,6 @@ func TestAPI_AppCreationHandler_AppenderError(t *testing.T) {
 		nil,
 		nil,
 		nil,
-		nil,
 		&mockAppender,
 		&mockGroupLeaderChecker,
 	).AppCreationHandler()(c)
@@ -1812,22 +1610,6 @@ func TestAPI_AppCreationHandler_AppenderError(t *testing.T) {
 	if got, want := mockAppender.app, dummyApp; got != want {
 		t.Fatalf("got %v, want %v", got, want)
 	}
-}
-
-type mockAuthenticatedUserIDGetter struct {
-	// receive
-	ctx   context.Context
-	token string
-
-	//return
-	id  string
-	err error
-}
-
-func (ma *mockAuthenticatedUserIDGetter) GetAuthenticatedUserID(ctx context.Context, token string) (string, error) {
-	ma.ctx = ctx
-	ma.token = token
-	return ma.id, ma.err
 }
 
 type mockGroupLeaderChecker struct {

@@ -3,7 +3,7 @@ package store
 import (
 	"context"
 	"errors"
-	"gaef-group-service/domain"
+	"github.com/gabrielseibel1/gaef/group/domain"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"

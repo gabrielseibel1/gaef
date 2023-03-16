@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/gabrielseibel1/gaef-user-service/domain"
+	"github.com/gabrielseibel1/gaef/user/domain"
 )
 
 // dependencies

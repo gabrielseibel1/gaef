@@ -3,13 +3,14 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/gabrielseibel1/gaef/auth/authenticator"
+	"github.com/gabrielseibel1/gaef/auth/middleware"
+	"github.com/gabrielseibel1/gaef/encounter-proposal/api"
+	"github.com/gabrielseibel1/gaef/encounter-proposal/store"
 	"log"
 	"os"
 	"time"
 
-	"github.com/gabrielseibel1/gaef-encounter-proposal-service/api"
-	"github.com/gabrielseibel1/gaef-encounter-proposal-service/store"
-	"github.com/gabrielseibel1/gaef/auth"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -87,11 +88,11 @@ func main() {
 	}
 
 	// instantiate and inject dependencies
-	a := auth.New(userServiceURL)
+	a := middleware.New(authenticator.New(userServiceURL), "userID")
 	m := store.New(client.Database(dbName).Collection(collectionName))
-	h := api.New(a, m, m, m, m, m, m, m, m)
+	h := api.New(m, m, m, m, m, m, m, m)
 	hg := handlerGenerators{
-		authMiddlewareGenerator:                        h,
+		authMiddlewareGenerator:                        a,
 		epCreatorGroupLeaderCheckerMiddlewareGenerator: h,
 		epCreationHandlerGenerator:                     h,
 		epReadingAllHandlerGenerator:                   h,

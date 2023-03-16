@@ -7,14 +7,13 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/gabrielseibel1/gaef-encounter-proposal-service/domain"
+	"github.com/gabrielseibel1/gaef/encounter-proposal/domain"
 	"github.com/gin-gonic/gin"
 )
 
 var (
-	Page  = "page"
-	EPID  = "epid"
-	AppID = "appid"
+	Page = "page"
+	EPID = "epid"
 )
 
 type API struct {
@@ -58,7 +57,6 @@ type groupLeaderChecker interface {
 }
 
 func New(
-	authenticator authenticatedUserIDGetter,
 	epCreator encounterProposalCreator,
 	pagedEPsReader pagedEncounterProposalsReader,
 	byUserEPsReader byUserEncounterProposalsReader,
@@ -69,7 +67,6 @@ func New(
 	leaderChecker groupLeaderChecker,
 ) API {
 	return API{
-		authenticator:   authenticator,
 		epCreator:       epCreator,
 		pagedEPsReader:  pagedEPsReader,
 		byUserEPsReader: byUserEPsReader,
@@ -79,27 +76,6 @@ func New(
 		appAppender:     appAppender,
 		leaderChecker:   leaderChecker,
 	}
-}
-
-func (api API) AuthMiddleware() gin.HandlerFunc {
-	return jsonMiddleware(func(ctx *gin.Context) status {
-
-		authHeader := ctx.GetHeader("Authorization")
-		if authHeader == "" || len(authHeader) <= len("Bearer ") {
-			return apiErrorUnauthorized
-		}
-		token := authHeader[len("Bearer "):]
-
-		id, err := api.authenticator.GetAuthenticatedUserID(ctx, token)
-		if err != nil {
-			return apiErrorUnauthorized
-		}
-
-		ctx.Set(authenticatedUserID, id)
-
-		return status{}
-
-	})
 }
 
 func (api API) EPCreatorGroupLeaderCheckerMiddleware() gin.HandlerFunc {

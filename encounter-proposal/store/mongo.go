@@ -3,7 +3,7 @@ package store
 import (
 	"context"
 
-	"github.com/gabrielseibel1/gaef-encounter-proposal-service/domain"
+	"github.com/gabrielseibel1/gaef/encounter-proposal/domain"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 

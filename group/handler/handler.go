@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"gaef-group-service/domain"
+	"github.com/gabrielseibel1/gaef/group/domain"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -22,7 +22,6 @@ type Handler struct {
 }
 
 func New(
-	authenticator Authenticator,
 	leaderChecker LeaderChecker,
 	groupCreator GroupCreator,
 	participatingGroupsReader ParticipatingGroupsReader,
@@ -32,7 +31,6 @@ func New(
 	groupDeleter GroupDeleter,
 ) Handler {
 	return Handler{
-		authenticator:             authenticator,
 		leaderChecker:             leaderChecker,
 		groupCreator:              groupCreator,
 		participatingGroupsReader: participatingGroupsReader,
@@ -40,27 +38,6 @@ func New(
 		groupReader:               groupReader,
 		groupUpdater:              groupUpdater,
 		groupDeleter:              groupDeleter,
-	}
-}
-
-func (h Handler) AuthMiddleware() gin.HandlerFunc {
-	return func(ctx *gin.Context) {
-		authHeader := ctx.GetHeader("Authorization")
-		if authHeader == "" || len(authHeader) <= len("Bearer ") {
-			ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Missing authorization header"})
-			return
-		}
-		token := authHeader[len("Bearer "):]
-
-		userID, err := h.authenticator.Authenticate(ctx, token)
-		if err != nil {
-			ctx.AbortWithStatusJSON(http.StatusUnauthorized, errorMessageUnauthorized)
-			return
-		}
-
-		ctx.Set("userID", userID)
-
-		ctx.Next()
 	}
 }
 
@@ -201,7 +178,7 @@ type GroupDeleter interface {
 	DeleteGroup(ctx context.Context, id string) error
 }
 
-var errorMessageUnauthorized gin.H = gin.H{"error": "unauthorized"}
+var errorMessageUnauthorized = gin.H{"error": "unauthorized"}
 
 func ginErrorMessage(err error) gin.H {
 	return gin.H{"error": err.Error()}

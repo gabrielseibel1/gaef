@@ -1,4 +1,4 @@
-module gaef-group-service
+module github.com/gabrielseibel1/gaef/group
 
 go 1.19
 

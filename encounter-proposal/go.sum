@@ -7,8 +7,8 @@ github.com/chenzhuoyu/base64x v0.0.0-20221115062448-fe3a3abad311/go.mod h1:b583j
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/gabrielseibel1/gaef/auth v0.0.0-20230316124027-059bf9bc2a9d h1:KqGGkHvl2ssEXG+bL5dEXAyKqGC5HABI9/GgNVj/p3o=
-github.com/gabrielseibel1/gaef/auth v0.0.0-20230316124027-059bf9bc2a9d/go.mod h1:FlROZJZPl+f3N9WVKToQc2tpTRECb3TS+4OcfLtvN60=
+github.com/gabrielseibel1/gaef/auth v0.0.0-20230316125914-23a048dab13f h1:AWnzC7dTulpBj8pVDd2Goci5vuOiK+UjXlNI+/fitKM=
+github.com/gabrielseibel1/gaef/auth v0.0.0-20230316125914-23a048dab13f/go.mod h1:FlROZJZPl+f3N9WVKToQc2tpTRECb3TS+4OcfLtvN60=
 github.com/gin-contrib/sse v0.1.0 h1:Y/yl/+YNO8GZSjAhjMsSuLt29uWRFHdHYUb5lYOV9qE=
 github.com/gin-contrib/sse v0.1.0/go.mod h1:RHrZQHXnP2xjPF+u1gW/2HnVO7nvIa9PG3Gm+fLHvGI=
 github.com/gin-gonic/gin v1.9.0 h1:OjyFBKICoexlu99ctXNR2gg+c5pKrKMuyjgARg9qeY8=

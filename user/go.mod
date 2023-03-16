@@ -1,4 +1,4 @@
-module github.com/gabrielseibel1/gaef-user-service
+module github.com/gabrielseibel1/gaef/user
 
 go 1.19
 

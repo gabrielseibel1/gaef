@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gabrielseibel1/gaef-user-service/domain"
+	"github.com/gabrielseibel1/gaef/user/domain"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt"
 )

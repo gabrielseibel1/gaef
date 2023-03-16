@@ -3,9 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
-	"gaef-group-service/auth"
-	"gaef-group-service/handler"
-	"gaef-group-service/store"
+	"github.com/gabrielseibel1/gaef/auth/authenticator"
+	"github.com/gabrielseibel1/gaef/auth/middleware"
+	"github.com/gabrielseibel1/gaef/group/handler"
+	"github.com/gabrielseibel1/gaef/group/store"
 	"log"
 	"os"
 	"time"
@@ -47,18 +48,18 @@ func main() {
 	}
 
 	// instantiate and inject dependencies
-	auth := auth.New(userServiceURL)
-	store := store.New(client.Database(dbName).Collection(collectionName))
-	handler := handler.New(auth, store, store, store, store, store, store, store)
+	a := middleware.New(authenticator.New(userServiceURL), "userID")
+	s := store.New(client.Database(dbName).Collection(collectionName))
+	h := handler.New(s, s, s, s, s, s, s)
 	handlers := handlers{
-		auth:                    handler,
-		onlyLeaders:             handler,
-		createGroup:             handler,
-		readParticipatingGroups: handler,
-		readLeadingGroups:       handler,
-		readGroup:               handler,
-		updateGroup:             handler,
-		deleteGroup:             handler,
+		auth:                    a,
+		onlyLeaders:             h,
+		createGroup:             h,
+		readParticipatingGroups: h,
+		readLeadingGroups:       h,
+		readGroup:               h,
+		updateGroup:             h,
+		deleteGroup:             h,
 	}
 
 	// run http server

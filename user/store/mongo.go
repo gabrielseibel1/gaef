@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/gabrielseibel1/gaef-user-service/domain"
+	"github.com/gabrielseibel1/gaef/user/domain"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
