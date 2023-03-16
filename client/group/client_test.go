@@ -23,19 +23,19 @@ func TestClient_CRUD_Localhost8081(t *testing.T) {
 	}
 
 	// create group with three users
-	user1ID, err := usersClient.SignUp("A", "a@gmail.com", "test123a")
+	user1ID, err := usersClient.SignUp("1", "1@gmail.com", "test1231")
 	if err != nil {
 		t.Fatalf("usersClient.SignUp = err: %s", err.Error())
 	}
-	user2ID, err := usersClient.SignUp("B", "b@gmail.com", "test123b")
+	user2ID, err := usersClient.SignUp("2", "2@gmail.com", "test1232")
 	if err != nil {
 		t.Fatalf("usersClient.SignUp = err: %s", err.Error())
 	}
-	user3ID, err := usersClient.SignUp("C", "c@gmail.com", "test123c")
+	user3ID, err := usersClient.SignUp("3", "3@gmail.com", "test1233")
 	if err != nil {
 		t.Fatalf("usersClient.SignUp = err: %s", err.Error())
 	}
-	token, err := usersClient.Login("a@gmail.com", "test123a")
+	token, err := usersClient.Login("1@gmail.com", "test1231")
 	if err != nil {
 		t.Fatalf("usersClient.Login = err: %s", err.Error())
 	}
