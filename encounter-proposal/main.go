@@ -9,7 +9,7 @@ import (
 
 	"github.com/gabrielseibel1/gaef-encounter-proposal-service/api"
 	"github.com/gabrielseibel1/gaef-encounter-proposal-service/store"
-	"github.com/gabrielseibel1/gaef/auth/auth"
+	"github.com/gabrielseibel1/gaef/auth"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/mongo"
