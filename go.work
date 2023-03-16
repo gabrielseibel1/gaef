@@ -2,8 +2,8 @@ go 1.19
 
 use (
 	./auth
+	./client
 	./encounter-proposal
 	./group
-	./test
 	./user
 )

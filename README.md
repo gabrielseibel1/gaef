@@ -15,3 +15,9 @@ docker compose down
 docker compose -f docker-compose-debug.yml up -d --build
 docker compose -f docker-compose-debug.yml down
 ```
+
+## Testing
+
+```shell
+./test.sh
+```

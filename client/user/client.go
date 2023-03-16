@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/gabrielseibel1/gaef-test/domain"
+	"github.com/gabrielseibel1/client/domain"
 )
 
 type Client struct {

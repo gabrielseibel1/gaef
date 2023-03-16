@@ -4,11 +4,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/gabrielseibel1/client/domain"
 	"io"
 	"net/http"
 	"net/url"
-
-	"github.com/gabrielseibel1/gaef-test/domain"
 )
 
 type Client struct {
