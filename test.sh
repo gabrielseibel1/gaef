@@ -18,7 +18,7 @@ cd ..
 
 cd client || exit
 docker compose up -d --build
-sleep 5s
+sleep 1s
 go test ./... --cover -count=1
 docker compose down --volumes
 cd ..
