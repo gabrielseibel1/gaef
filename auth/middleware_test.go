@@ -1,10 +1,10 @@
-package middleware_test
+package auth_test
 
 import (
 	"context"
 	"encoding/json"
 	"errors"
-	"github.com/gabrielseibel1/gaef/auth/middleware"
+	"github.com/gabrielseibel1/gaef/auth"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"net/http/httptest"
@@ -31,9 +31,10 @@ func TestAPI_AuthMiddleware_OK(t *testing.T) {
 
 	// run code under test
 
-	middleware.New(
+	auth.NewMiddlewareGenerator(
 		&mockAuthenticator,
 		"userID",
+		"token",
 	).AuthMiddleware()(c)
 
 	// assertions
@@ -47,6 +48,9 @@ func TestAPI_AuthMiddleware_OK(t *testing.T) {
 		t.Fatalf("got %v, want %v", got, want)
 	}
 	if got, want := c.GetString("userID"), mockAuthenticator.id; got != want {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+	if got, want := c.GetString("token"), mockAuthenticator.token; got != want {
 		t.Fatalf("got %v, want %v", got, want)
 	}
 	// verify mocks received values
@@ -82,9 +86,10 @@ func TestAPI_AuthMiddleware_AuthenticatorError(t *testing.T) {
 
 	// run code under test
 
-	middleware.New(
+	auth.NewMiddlewareGenerator(
 		&mockAuthenticator,
 		"userID",
+		"token",
 	).AuthMiddleware()(c)
 
 	// assertions
@@ -105,6 +110,9 @@ func TestAPI_AuthMiddleware_AuthenticatorError(t *testing.T) {
 		t.Fatalf("got %v, want %v", got, want)
 	}
 	if got, want := c.GetString("userID"), ""; got != want {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+	if got, want := c.GetString("token"), ""; got != want {
 		t.Fatalf("got %v, want %v", got, want)
 	}
 	// verify mocks received values
@@ -136,9 +144,10 @@ func TestAPI_AuthMiddleware_MissingHeader(t *testing.T) {
 
 	// run code under test
 
-	middleware.New(
+	auth.NewMiddlewareGenerator(
 		&mockAuthenticator,
 		"userID",
+		"token",
 	).AuthMiddleware()(c)
 
 	// assertions
@@ -161,6 +170,9 @@ func TestAPI_AuthMiddleware_MissingHeader(t *testing.T) {
 	if got, want := c.GetString("userID"), ""; got != want {
 		t.Fatalf("got %v, want %v", got, want)
 	}
+	if got, want := c.GetString("token"), ""; got != want {
+		t.Fatalf("got %v, want %v", got, want)
+	}
 	// verify stopped handler chain
 	if !c.IsAborted() {
 		t.Fatalf("context was not aborted")
@@ -177,7 +189,7 @@ type mockAuthenticatedUserIDGetter struct {
 	err error
 }
 
-func (ma *mockAuthenticatedUserIDGetter) GetAuthenticatedUserID(ctx context.Context, token string) (string, error) {
+func (ma *mockAuthenticatedUserIDGetter) ReadToken(ctx context.Context, token string) (string, error) {
 	ma.ctx = ctx
 	ma.token = token
 	return ma.id, ma.err

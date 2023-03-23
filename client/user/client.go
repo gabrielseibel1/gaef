@@ -2,83 +2,62 @@ package user
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/gabrielseibel1/gaef/client/domain"
 	"io"
 	"net/http"
-	"net/url"
-
-	"github.com/gabrielseibel1/gaef/client/domain"
 )
 
 type Client struct {
-	Host       string
-	BasePath   string
-	Token      string
-	HTTPClient http.Client
+	URL string
 }
 
-func (c Client) SignUp(name, email, password string) (string, error) {
-	reqBodyStruct := domain.User{
-		Name:     name,
-		Email:    email,
-		Password: password,
-	}
-	reqBodyBytes, err := json.Marshal(reqBodyStruct)
+func (c Client) SignUp(ctx context.Context, name, email, password string) (string, error) {
+	reqBodyBytes, err := json.Marshal(domain.User{Name: name, Email: email, Password: password})
 	if err != nil {
 		return "", err
 	}
-	req := http.Request{
-		Method: http.MethodPost,
-		URL: &url.URL{
-			Scheme: "http",
-			Host:   c.Host,
-			Path:   c.BasePath,
-		},
-		Body: io.NopCloser(bytes.NewBuffer(reqBodyBytes)),
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.URL, io.NopCloser(bytes.NewBuffer(reqBodyBytes)))
+	if err != nil {
+		return "", err
 	}
-	resp, err := c.HTTPClient.Do(&req)
+
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return "", err
 	}
 	if resp.StatusCode != http.StatusCreated {
 		return "", fmt.Errorf("sign-up request returned status code %d", resp.StatusCode)
 	}
-	var respBody struct {
-		ID string `json:"id"`
-	}
+
+	var respBody struct{ ID string }
 	err = json.NewDecoder(resp.Body).Decode(&respBody)
 	return respBody.ID, err
 }
 
-func (c Client) Login(email, password string) (string, error) {
-	reqBodyStruct := domain.User{
-		Email:    email,
-		Password: password,
-	}
-	reqBodyBytes, err := json.Marshal(reqBodyStruct)
+func (c Client) Login(ctx context.Context, email, password string) (string, error) {
+	reqBodyBytes, err := json.Marshal(domain.User{Email: email, Password: password})
 	if err != nil {
 		return "", err
 	}
-	req := http.Request{
-		Method: http.MethodPost,
-		URL: &url.URL{
-			Scheme: "http",
-			Host:   c.Host,
-			Path:   c.BasePath + "session",
-		},
-		Body: io.NopCloser(bytes.NewBuffer(reqBodyBytes)),
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.URL+"session", io.NopCloser(bytes.NewBuffer(reqBodyBytes)))
+	if err != nil {
+		return "", err
 	}
-	resp, err := c.HTTPClient.Do(&req)
+
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return "", err
 	}
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("login request returned status code %d", resp.StatusCode)
 	}
-	var respBody struct {
-		Token string `json:"token"`
-	}
+
+	var respBody struct{ Token string }
 	err = json.NewDecoder(resp.Body).Decode(&respBody)
 	if err != nil {
 		return "", err
@@ -86,82 +65,67 @@ func (c Client) Login(email, password string) (string, error) {
 	return respBody.Token, nil
 }
 
-func (c Client) ReadUser(id string) (domain.User, error) {
-	req := http.Request{
-		Method: http.MethodGet,
-		URL: &url.URL{
-			Scheme: "http",
-			Host:   c.Host,
-			Path:   c.BasePath + id,
-		},
-		Header: make(http.Header),
+func (c Client) ReadUser(ctx context.Context, token, id string) (domain.User, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.URL+id, nil)
+	if err != nil {
+		return domain.User{}, err
 	}
-	req.Header.Add("Authorization", "Bearer "+c.Token)
-	resp, err := c.HTTPClient.Do(&req)
+	req.Header.Add("Authorization", "Bearer "+token)
+
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return domain.User{}, err
 	}
 	if resp.StatusCode != http.StatusOK {
 		return domain.User{}, fmt.Errorf("read user request returned status code %d", resp.StatusCode)
 	}
-	var respBody struct {
-		User domain.User `json:"user"`
-	}
+
+	var respBody struct{ User domain.User }
 	err = json.NewDecoder(resp.Body).Decode(&respBody)
 	return respBody.User, err
 }
 
-func (c Client) UpdateUser(u domain.User) (domain.User, error) {
+func (c Client) UpdateUser(ctx context.Context, token string, u domain.User) (domain.User, error) {
 	reqBodyBytes, err := json.Marshal(u)
 	if err != nil {
 		return u, err
 	}
-	req := http.Request{
-		Method: http.MethodPut,
-		URL: &url.URL{
-			Scheme: "http",
-			Host:   c.Host,
-			Path:   c.BasePath + u.ID,
-		},
-		Body:   io.NopCloser(bytes.NewBuffer(reqBodyBytes)),
-		Header: make(http.Header),
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPut, c.URL+u.ID, io.NopCloser(bytes.NewBuffer(reqBodyBytes)))
+	if err != nil {
+		return domain.User{}, err
 	}
-	req.Header.Add("Authorization", "Bearer "+c.Token)
-	resp, err := c.HTTPClient.Do(&req)
+	req.Header.Add("Authorization", "Bearer "+token)
+
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return u, err
 	}
 	if resp.StatusCode != http.StatusOK {
 		return u, fmt.Errorf("update user request returned status code %d", resp.StatusCode)
 	}
-	var respBody struct {
-		User domain.User `json:"user"`
-	}
+
+	var respBody struct{ User domain.User }
 	err = json.NewDecoder(resp.Body).Decode(&respBody)
 	return respBody.User, err
 }
 
-func (c Client) DeleteUser(id string) (string, error) {
-	req := http.Request{
-		Method: http.MethodDelete,
-		URL: &url.URL{
-			Scheme: "http",
-			Host:   c.Host,
-			Path:   c.BasePath + id,
-		},
-		Header: make(http.Header),
+func (c Client) DeleteUser(ctx context.Context, token, id string) (string, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, c.URL+id, nil)
+	if err != nil {
+		return "", err
 	}
-	req.Header.Add("Authorization", "Bearer "+c.Token)
-	resp, err := c.HTTPClient.Do(&req)
+	req.Header.Add("Authorization", "Bearer "+token)
+
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return "", err
 	}
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("delete user request returned status code %d", resp.StatusCode)
 	}
-	var respBody struct {
-		Message string `json:"message"`
-	}
+
+	var respBody struct{ Message string }
 	err = json.NewDecoder(resp.Body).Decode(&respBody)
 	if err != nil {
 		return "", err
@@ -169,27 +133,22 @@ func (c Client) DeleteUser(id string) (string, error) {
 	return respBody.Message, nil
 }
 
-func (c Client) ReadToken() (string, error) {
-	req := http.Request{
-		Method: http.MethodGet,
-		URL: &url.URL{
-			Scheme: "http",
-			Host:   c.Host,
-			Path:   c.BasePath + "token-validation",
-		},
-		Header: make(http.Header),
+func (c Client) ReadToken(ctx context.Context, token string) (string, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.URL+"token-validation", nil)
+	if err != nil {
+		return "", err
 	}
-	req.Header.Add("Authorization", "Bearer "+c.Token)
-	resp, err := c.HTTPClient.Do(&req)
+	req.Header.Add("Authorization", "Bearer "+token)
+
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return "", err
 	}
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("read token request returned status code %d", resp.StatusCode)
 	}
-	var respBody struct {
-		ID string `json:"id"`
-	}
+
+	var respBody struct{ ID string }
 	err = json.NewDecoder(resp.Body).Decode(&respBody)
 	return respBody.ID, err
 }

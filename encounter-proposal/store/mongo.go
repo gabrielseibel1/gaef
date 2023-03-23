@@ -45,10 +45,6 @@ func (m Mongo) ReadPaged(ctx context.Context, page int) ([]domain.EncounterPropo
 	return eps, nil
 }
 
-func (m Mongo) ReadByUser(ctx context.Context, id string) ([]domain.EncounterProposal, error) {
-	panic("not implemented")
-}
-
 func (m Mongo) ReadByID(ctx context.Context, id string) (domain.EncounterProposal, error) {
 	hex, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
@@ -65,6 +61,19 @@ func (m Mongo) ReadByID(ctx context.Context, id string) (domain.EncounterProposa
 		return domain.EncounterProposal{}, err
 	}
 	return ep, nil
+}
+
+func (m Mongo) ReadByGroupIDs(ctx context.Context, groupIDs []string) ([]domain.EncounterProposal, error) {
+	cursor, err := m.collection.Find(ctx, bson.M{"creator.id": bson.M{"$in": bson.A{groupIDs}}})
+	if err != nil {
+		return nil, err
+	}
+
+	var eps []domain.EncounterProposal
+	if err := cursor.All(ctx, &eps); err != nil {
+		return nil, err
+	}
+	return eps, nil
 }
 
 func (m Mongo) Update(ctx context.Context, ep domain.EncounterProposal) (domain.EncounterProposal, error) {
@@ -103,26 +112,21 @@ func (m Mongo) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
-// Append TODO: maybe don't return the object
-func (m Mongo) Append(ctx context.Context, epID string, app domain.Application) (domain.EncounterProposal, error) {
+func (m Mongo) Append(ctx context.Context, epID string, app domain.Application) error {
 	hex, err := primitive.ObjectIDFromHex(epID)
 	if err != nil {
-		return domain.EncounterProposal{}, err
+		return err
 	}
 
 	result, err := m.collection.UpdateOne(ctx, bson.M{"_id": hex}, bson.M{"$push": bson.M{"applications": app}})
 	if err != nil {
-		return domain.EncounterProposal{}, err
+		return err
 	}
 	if result.ModifiedCount != 1 {
-		return domain.EncounterProposal{}, errors.New("no such encounter proposal")
+		return errors.New("no such encounter proposal")
 	}
 
-	return m.ReadByID(ctx, epID)
-}
-
-func (m Mongo) IsGroupLeader(ctx context.Context, groupID string, userID string) (bool, error) {
-	panic("not implemented")
+	return nil
 }
 
 var pageSize = 50

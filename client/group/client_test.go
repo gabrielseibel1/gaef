@@ -1,7 +1,8 @@
-package group
+package group_test
 
 import (
-	"net/http"
+	"context"
+	"github.com/gabrielseibel1/gaef/client/group"
 	"testing"
 
 	"github.com/gabrielseibel1/gaef/client/domain"
@@ -10,36 +11,29 @@ import (
 
 func TestClient_CRUD_Localhost8081(t *testing.T) {
 	// we need a users client because groups API has authentication
-	usersClient := user.Client{
-		Host:       "localhost:8080",
-		BasePath:   "/api/v0/users/",
-		HTTPClient: http.Client{},
-	}
 
-	groupsClient := Client{
-		Host:       "localhost:8081",
-		BasePath:   "/api/v0/groups/",
-		HTTPClient: http.Client{},
-	}
+	ctx := context.TODO()
+
+	usersClient := user.Client{URL: "http://localhost:8080/api/v0/users/"}
+	groupsClient := group.Client{URL: "http://localhost:8081/api/v0/groups/"}
 
 	// create group with three users
-	user1ID, err := usersClient.SignUp("1", "1@gmail.com", "test1231")
+	user1ID, err := usersClient.SignUp(ctx, "1", "1@gmail.com", "test1231")
 	if err != nil {
 		t.Fatalf("usersClient.SignUp = err: %s", err.Error())
 	}
-	user2ID, err := usersClient.SignUp("2", "2@gmail.com", "test1232")
+	user2ID, err := usersClient.SignUp(ctx, "2", "2@gmail.com", "test1232")
 	if err != nil {
 		t.Fatalf("usersClient.SignUp = err: %s", err.Error())
 	}
-	user3ID, err := usersClient.SignUp("3", "3@gmail.com", "test1233")
+	user3ID, err := usersClient.SignUp(ctx, "3", "3@gmail.com", "test1233")
 	if err != nil {
 		t.Fatalf("usersClient.SignUp = err: %s", err.Error())
 	}
-	token, err := usersClient.Login("1@gmail.com", "test1231")
+	token, err := usersClient.Login(ctx, "1@gmail.com", "test1231")
 	if err != nil {
 		t.Fatalf("usersClient.Login = err: %s", err.Error())
 	}
-	groupsClient.Token = token
 	g := domain.Group{
 		Name:        "G",
 		PictureURL:  "example.com",
@@ -69,7 +63,7 @@ func TestClient_CRUD_Localhost8081(t *testing.T) {
 			},
 		},
 	}
-	g, err = groupsClient.CreateGroup(g)
+	g, err = groupsClient.CreateGroup(ctx, token, g)
 	if err != nil {
 		t.Fatalf("groupsClient.CreateGroup = err: %s", err.Error())
 	}
@@ -78,13 +72,13 @@ func TestClient_CRUD_Localhost8081(t *testing.T) {
 	// to have multiple elements in the results
 	g.Name = "H"
 	g.Description = "Hh"
-	g, err = groupsClient.CreateGroup(g)
+	g, err = groupsClient.CreateGroup(ctx, token, g)
 	if err != nil {
 		t.Fatalf("groupsClient.CreateGroup = err: %s", err.Error())
 	}
 
 	// participating groups
-	groups, err := groupsClient.ParticipatingGroups()
+	groups, err := groupsClient.ParticipatingGroups(ctx, token)
 	if err != nil {
 		t.Fatalf("groupsClient.ParticipatingGroups() = err: %s", err.Error())
 	}
@@ -93,7 +87,7 @@ func TestClient_CRUD_Localhost8081(t *testing.T) {
 	}
 
 	// leading groups
-	groups, err = groupsClient.LeadingGroups()
+	groups, err = groupsClient.LeadingGroups(ctx, token)
 	if err != nil {
 		t.Fatalf("groupsClient.LeadingGroups() = err: %s", err.Error())
 	}
@@ -102,32 +96,35 @@ func TestClient_CRUD_Localhost8081(t *testing.T) {
 	}
 
 	// read group
-	g, err = groupsClient.ReadGroup(groups[0].ID)
+	g, err = groupsClient.ReadGroup(ctx, token, groups[0].ID)
 	if err != nil {
 		t.Fatalf("groupsClient.ReadGroup() = err: %s", err.Error())
 	}
 
 	// read leading groups
-	g, err = groupsClient.ReadLeadingGroup(groups[0].ID)
+	g, err = groupsClient.ReadLeadingGroup(ctx, token, groups[0].ID)
 	if err != nil {
 		t.Fatalf("groupsClient.ReadLeadingGroup() = err: %s", err.Error())
 	}
-	g, err = groupsClient.ReadLeadingGroup(groups[1].ID)
+	isLeader, err := groupsClient.IsGroupLeader(ctx, token, groups[1].ID)
 	if err != nil {
-		t.Fatalf("groupsClient.ReadLeadingGroup() = err: %s", err.Error())
+		t.Fatalf("groupsClient.IsGroupLeader() = err: %s", err.Error())
+	}
+	if !isLeader {
+		t.Fatalf("groupsClient.IsGroupLeader() = bool: %v", isLeader)
 	}
 
 	// update group
 	g.Name = "I"
 	g.Description = "Ii"
 	g.Members, g.Leaders = g.Leaders, g.Members
-	g, err = groupsClient.UpdateGroup(g)
+	g, err = groupsClient.UpdateGroup(ctx, token, g)
 	if err != nil {
 		t.Fatalf("groupsClient.UpdateGroup() = err: %s", err.Error())
 	}
 
 	// delete group
-	_, err = groupsClient.DeleteGroup(groups[0].ID)
+	_, err = groupsClient.DeleteGroup(ctx, token, groups[0].ID)
 	if err != nil {
 		t.Fatalf("groupsClient.DeleteGroup() = err: %s", err.Error())
 	}

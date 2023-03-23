@@ -1,4 +1,4 @@
-package middleware
+package auth
 
 import (
 	"context"
@@ -6,20 +6,21 @@ import (
 	"net/http"
 )
 
-type Generator struct {
-	authenticator    authenticator
+type MiddlewareGenerator struct {
+	reader           tokenReader
 	contextUserIDKey string
+	contextTokenKey  string
 }
 
-type authenticator interface {
-	GetAuthenticatedUserID(ctx context.Context, token string) (string, error)
+type tokenReader interface {
+	ReadToken(ctx context.Context, token string) (string, error)
 }
 
-func New(authenticator authenticator, contextUserIDKey string) Generator {
-	return Generator{authenticator: authenticator, contextUserIDKey: contextUserIDKey}
+func NewMiddlewareGenerator(reader tokenReader, contextUserIDKey, contextTokenKey string) MiddlewareGenerator {
+	return MiddlewareGenerator{reader: reader, contextUserIDKey: contextUserIDKey, contextTokenKey: contextTokenKey}
 }
 
-func (g Generator) AuthMiddleware() gin.HandlerFunc {
+func (g MiddlewareGenerator) AuthMiddleware() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		authHeader := ctx.GetHeader("Authorization")
 		if authHeader == "" || len(authHeader) <= len("Bearer ") {
@@ -28,12 +29,13 @@ func (g Generator) AuthMiddleware() gin.HandlerFunc {
 		}
 		token := authHeader[len("Bearer "):]
 
-		userID, err := g.authenticator.GetAuthenticatedUserID(ctx, token)
+		userID, err := g.reader.ReadToken(ctx, token)
 		if err != nil {
 			ctx.AbortWithStatusJSON(http.StatusUnauthorized, errorUnauthorized)
 			return
 		}
 
+		ctx.Set(g.contextTokenKey, token)
 		ctx.Set(g.contextUserIDKey, userID)
 
 		ctx.Next()

@@ -3,8 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/gabrielseibel1/gaef/auth/authenticator"
-	"github.com/gabrielseibel1/gaef/auth/middleware"
+	"github.com/gabrielseibel1/gaef/auth"
+	"github.com/gabrielseibel1/gaef/client/user"
 	"github.com/gabrielseibel1/gaef/group/handler"
 	"github.com/gabrielseibel1/gaef/group/store"
 	"log"
@@ -48,7 +48,7 @@ func main() {
 	}
 
 	// instantiate and inject dependencies
-	a := middleware.New(authenticator.New(userServiceURL), "userID")
+	a := auth.NewMiddlewareGenerator(user.Client{URL: userServiceURL}, "userID", "token")
 	s := store.New(client.Database(dbName).Collection(collectionName))
 	h := handler.New(s, s, s, s, s, s, s)
 	handlers := handlers{
@@ -78,7 +78,7 @@ func main() {
 			forLeaders.DELETE("/:id", handlers.deleteGroup.DeleteGroupHandler())
 		}
 	}
-	server.Run(fmt.Sprintf("0.0.0.0:%s", port))
+	log.Fatal(server.Run(fmt.Sprintf("0.0.0.0:%s", port)))
 }
 
 type handlers struct {

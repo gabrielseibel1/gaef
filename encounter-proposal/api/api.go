@@ -8,6 +8,8 @@ import (
 	"strconv"
 
 	"github.com/gabrielseibel1/gaef/encounter-proposal/domain"
+
+	clientDomain "github.com/gabrielseibel1/gaef/client/domain"
 	"github.com/gin-gonic/gin"
 )
 
@@ -17,30 +19,27 @@ var (
 )
 
 type API struct {
-	authenticator   authenticatedUserIDGetter
-	epCreator       encounterProposalCreator
-	pagedEPsReader  pagedEncounterProposalsReader
-	byUserEPsReader byUserEncounterProposalsReader
-	byIDEPsReader   byIDEncounterProposalsReader
-	epUpdater       encounterProposalUpdater
-	epDeleter       encounterProposalDeleter
-	appAppender     applicationAppender
-	leaderChecker   groupLeaderChecker
+	epCreator           encounterProposalCreator
+	pagedEPsReader      pagedEncounterProposalsReader
+	byGroupIDsEPsReader byGroupIDsEPsReader
+	byIDEPReader        byIDEncounterProposalReader
+	epUpdater           encounterProposalUpdater
+	epDeleter           encounterProposalDeleter
+	appAppender         applicationAppender
+	leadingGroupsLister leadingGroupsLister
+	leaderChecker       groupLeaderChecker
 }
 
-type authenticatedUserIDGetter interface {
-	GetAuthenticatedUserID(ctx context.Context, token string) (string, error)
-}
 type encounterProposalCreator interface {
 	Create(ctx context.Context, ep domain.EncounterProposal) (domain.EncounterProposal, error)
 }
 type pagedEncounterProposalsReader interface {
 	ReadPaged(ctx context.Context, page int) ([]domain.EncounterProposal, error)
 }
-type byUserEncounterProposalsReader interface {
-	ReadByUser(ctx context.Context, id string) ([]domain.EncounterProposal, error)
+type byGroupIDsEPsReader interface {
+	ReadByGroupIDs(ctx context.Context, groupIDs []string) ([]domain.EncounterProposal, error)
 }
-type byIDEncounterProposalsReader interface {
+type byIDEncounterProposalReader interface {
 	ReadByID(ctx context.Context, id string) (domain.EncounterProposal, error)
 }
 type encounterProposalUpdater interface {
@@ -50,31 +49,36 @@ type encounterProposalDeleter interface {
 	Delete(ctx context.Context, id string) error
 }
 type applicationAppender interface {
-	Append(ctx context.Context, epID string, app domain.Application) (domain.EncounterProposal, error)
+	Append(ctx context.Context, epID string, app domain.Application) error
+}
+type leadingGroupsLister interface {
+	LeadingGroups(ctx context.Context, token string) ([]clientDomain.Group, error)
 }
 type groupLeaderChecker interface {
-	IsGroupLeader(ctx context.Context, groupID string, userID string) (bool, error)
+	IsGroupLeader(ctx context.Context, token string, groupID string) (bool, error)
 }
 
 func New(
 	epCreator encounterProposalCreator,
 	pagedEPsReader pagedEncounterProposalsReader,
-	byUserEPsReader byUserEncounterProposalsReader,
-	byIDEPsReader byIDEncounterProposalsReader,
+	byGroupIDsEPsReader byGroupIDsEPsReader,
+	byIDEPReader byIDEncounterProposalReader,
 	epUpdater encounterProposalUpdater,
 	epDeleter encounterProposalDeleter,
 	appAppender applicationAppender,
+	leadingGroupsLister leadingGroupsLister,
 	leaderChecker groupLeaderChecker,
 ) API {
 	return API{
-		epCreator:       epCreator,
-		pagedEPsReader:  pagedEPsReader,
-		byUserEPsReader: byUserEPsReader,
-		byIDEPsReader:   byIDEPsReader,
-		epUpdater:       epUpdater,
-		epDeleter:       epDeleter,
-		appAppender:     appAppender,
-		leaderChecker:   leaderChecker,
+		epCreator:           epCreator,
+		pagedEPsReader:      pagedEPsReader,
+		byGroupIDsEPsReader: byGroupIDsEPsReader,
+		byIDEPReader:        byIDEPReader,
+		epUpdater:           epUpdater,
+		epDeleter:           epDeleter,
+		appAppender:         appAppender,
+		leadingGroupsLister: leadingGroupsLister,
+		leaderChecker:       leaderChecker,
 	}
 }
 
@@ -82,13 +86,13 @@ func (api API) EPCreatorGroupLeaderCheckerMiddleware() gin.HandlerFunc {
 	return jsonMiddleware(func(ctx *gin.Context) status {
 
 		epID := ctx.Param(EPID)
-		ep, err := api.byIDEPsReader.ReadByID(ctx, epID)
+		ep, err := api.byIDEPReader.ReadByID(ctx, epID)
 		if err != nil {
 			return apiErrorUnauthorized
 		}
 
-		userID := ctx.GetString(authenticatedUserID)
-		isLeader, err := api.leaderChecker.IsGroupLeader(ctx, ep.Creator.ID, userID)
+		token := ctx.GetString(authenticatedUserToken)
+		isLeader, err := api.leaderChecker.IsGroupLeader(ctx, token, ep.Creator.ID)
 		if err != nil || !isLeader {
 			return apiErrorUnauthorized
 		}
@@ -145,9 +149,18 @@ func (api API) EPReadingAllHandler() gin.HandlerFunc {
 func (api API) EPReadingByUserHandler() gin.HandlerFunc {
 	return jsonHandler(func(ctx *gin.Context) result {
 
-		userID := ctx.GetString(authenticatedUserID)
+		token := ctx.GetString(authenticatedUserToken)
+		leadingGroups, err := api.leadingGroupsLister.LeadingGroups(ctx, token)
+		if err != nil {
+			return er(http.StatusNotFound, err)
+		}
 
-		eps, err := api.byUserEPsReader.ReadByUser(ctx, userID)
+		ids := make([]string, len(leadingGroups))
+		for i, g := range leadingGroups {
+			ids[i] = g.ID
+		}
+
+		eps, err := api.byGroupIDsEPsReader.ReadByGroupIDs(ctx, ids)
 		if err != nil {
 			return er(http.StatusNotFound, err)
 		}
@@ -161,8 +174,7 @@ func (api API) EPReadingByIDHandler() gin.HandlerFunc {
 	return jsonHandler(func(ctx *gin.Context) result {
 
 		id := ctx.Param(EPID)
-
-		ep, err := api.byIDEPsReader.ReadByID(ctx, id)
+		ep, err := api.byIDEPReader.ReadByID(ctx, id)
 		if err != nil {
 			return er(http.StatusNotFound, err)
 		}
@@ -216,8 +228,8 @@ func (api API) AppCreationHandler() gin.HandlerFunc {
 		}
 
 		// check if user is a leader of the applicant group
-		userID := ctx.GetString(authenticatedUserID)
-		isLeader, err := api.leaderChecker.IsGroupLeader(ctx, app.Creator.ID, userID)
+		token := ctx.GetString(authenticatedUserToken)
+		isLeader, err := api.leaderChecker.IsGroupLeader(ctx, token, app.Creator.ID)
 		if err != nil {
 			return er(http.StatusUnauthorized, err)
 		}
@@ -227,12 +239,12 @@ func (api API) AppCreationHandler() gin.HandlerFunc {
 
 		// update EP with the new application
 		epID := ctx.Param(EPID)
-		ep, err := api.appAppender.Append(ctx, epID, app)
+		err = api.appAppender.Append(ctx, epID, app)
 		if err != nil {
 			return er(http.StatusNotFound, err)
 		}
 
-		return ok(encounterProposal, ep)
+		return ok(message, fmt.Sprintf("applied for %s", epID))
 
 	})
 }
@@ -296,7 +308,7 @@ func er(code int, err error) result {
 }
 
 var (
-	authenticatedUserID    = "userID"
+	authenticatedUserToken = "token"
 	encounterProposal      = "encounterProposal"
 	encounterProposalSlice = "encounterProposals"
 	message                = "message"

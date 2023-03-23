@@ -3,8 +3,9 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/gabrielseibel1/gaef/auth/authenticator"
-	"github.com/gabrielseibel1/gaef/auth/middleware"
+	"github.com/gabrielseibel1/gaef/auth"
+	"github.com/gabrielseibel1/gaef/client/group"
+	"github.com/gabrielseibel1/gaef/client/user"
 	"github.com/gabrielseibel1/gaef/encounter-proposal/api"
 	"github.com/gabrielseibel1/gaef/encounter-proposal/store"
 	"log"
@@ -66,6 +67,7 @@ func main() {
 	}
 	port := os.Getenv("PORT")
 	userServiceURL := os.Getenv("USER_SERVICE_URL")
+	groupServiceURL := os.Getenv("GROUP_SERVICE_URL")
 	dbURI := os.Getenv("MONGODB_URI")
 	dbName := os.Getenv("MONGODB_DATABASE")
 	collectionName := os.Getenv("MONGODB_COLLECTION")
@@ -88,19 +90,21 @@ func main() {
 	}
 
 	// instantiate and inject dependencies
-	a := middleware.New(authenticator.New(userServiceURL), "userID")
-	m := store.New(client.Database(dbName).Collection(collectionName))
-	h := api.New(m, m, m, m, m, m, m, m)
+	userClient := user.Client{URL: userServiceURL}
+	groupClient := group.Client{URL: groupServiceURL}
+	authHandler := auth.NewMiddlewareGenerator(userClient, "userID", "token")
+	db := store.New(client.Database(dbName).Collection(collectionName))
+	encounterProposalsAPI := api.New(db, db, db, db, db, db, db, groupClient, groupClient)
 	hg := handlerGenerators{
-		authMiddlewareGenerator:                        a,
-		epCreatorGroupLeaderCheckerMiddlewareGenerator: h,
-		epCreationHandlerGenerator:                     h,
-		epReadingAllHandlerGenerator:                   h,
-		epReadingByUserHandlerGenerator:                h,
-		epReadingByIDHandlerGenerator:                  h,
-		epUpdateHandlerGenerator:                       h,
-		epDeletionHandlerGenerator:                     h,
-		appCreationHandlerGenerator:                    h,
+		authMiddlewareGenerator:                        authHandler,
+		epCreatorGroupLeaderCheckerMiddlewareGenerator: encounterProposalsAPI,
+		epCreationHandlerGenerator:                     encounterProposalsAPI,
+		epReadingAllHandlerGenerator:                   encounterProposalsAPI,
+		epReadingByUserHandlerGenerator:                encounterProposalsAPI,
+		epReadingByIDHandlerGenerator:                  encounterProposalsAPI,
+		epUpdateHandlerGenerator:                       encounterProposalsAPI,
+		epDeletionHandlerGenerator:                     encounterProposalsAPI,
+		appCreationHandlerGenerator:                    encounterProposalsAPI,
 	}
 
 	// run HTTP server

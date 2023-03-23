@@ -1,36 +1,34 @@
-package user
+package user_test
 
 import (
-	"net/http"
+	"context"
+	"github.com/gabrielseibel1/gaef/client/user"
 	"testing"
 )
 
 func TestClient_CRUD_Localhost8080(t *testing.T) {
-	usersClient := Client{
-		Host:       "localhost:8080",
-		BasePath:   "/api/v0/users/",
-		HTTPClient: http.Client{},
-	}
+	ctx := context.TODO()
+
+	usersClient := user.Client{URL: "http://localhost:8080/api/v0/users/"}
 
 	name := "A"
 	email := "a@gmail.com"
 	password := "test123"
 
 	// create user
-	userID, err := usersClient.SignUp(name, email, password)
+	userID, err := usersClient.SignUp(ctx, name, email, password)
 	if err != nil {
 		t.Fatalf("usersClient.SignUp = err: %s", err.Error())
 	}
 
 	// login
-	token, err := usersClient.Login(email, password)
+	token, err := usersClient.Login(ctx, email, password)
 	if err != nil {
 		t.Fatalf("usersClient.Login = err: %s", err.Error())
 	}
-	usersClient.Token = token
 
 	// read user
-	u, err := usersClient.ReadUser(userID)
+	u, err := usersClient.ReadUser(ctx, token, userID)
 	if err != nil {
 		t.Fatalf("usersClient.ReadUser = err: %s", err.Error())
 	}
@@ -38,19 +36,19 @@ func TestClient_CRUD_Localhost8080(t *testing.T) {
 	// update user
 	u.Name = "B"
 	u.Email = "b@gmail.com"
-	u, err = usersClient.UpdateUser(u)
+	u, err = usersClient.UpdateUser(ctx, token, u)
 	if err != nil {
 		t.Fatalf("usersClient.UpdateUser = err: %s", err.Error())
 	}
 
 	// delete user
-	_, err = usersClient.DeleteUser(userID)
+	_, err = usersClient.DeleteUser(ctx, token, userID)
 	if err != nil {
 		t.Fatalf("usersClient.DeleteUser = err: %s", err.Error())
 	}
 
 	// validate token
-	_, err = usersClient.ReadToken()
+	_, err = usersClient.ReadToken(ctx, token)
 	if err != nil {
 		t.Fatalf("usersClient.ReadToken = err: %s", err.Error())
 	}
