@@ -1,22 +1,18 @@
 ## Build
 FROM golang:1.19.4 AS build
 
-WORKDIR /app
-
-COPY go.mod go.sum ./
-RUN go mod download && go mod verify
+WORKDIR /build
 
 COPY . .
-
-RUN CGO_ENABLED=0 go build -o server
+RUN CGO_ENABLED=0 go build -o user/server github.com/gabrielseibel1/gaef/user
 
 ## Deploy
 FROM scratch
 
 WORKDIR /app
 
-COPY --from=build /app/.env .
-COPY --from=build /app/server .
+COPY --from=build /build/user/.env .
+COPY --from=build /build/user/server .
 
 EXPOSE 8080
 

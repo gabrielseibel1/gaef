@@ -1,12 +1,15 @@
 services:
   user-service:
     build:
-        context: .
-        dockerfile: user/Dockerfile
+      context: .
+      dockerfile: user/_debug/Dockerfile
+    security_opt:
+      - "seccomp:unconfined"
+    cap_add:
+      - SYS_PTRACE
     ports:
       - "8080:8080"
-    environment:
-      - GIN_MODE=release
+      - "40000:40000"
   user-mongodb:
     image: mongo:6.0.4
     volumes:
@@ -26,7 +29,7 @@ services:
   encounter-proposal-service:
     build:
       context: .
-      dockerfile: encounter-proposal/Dockerfile
+      dockerfile: encounter-proposal/_debug/Dockerfile
     ports:
       - "8082:8080"
     environment:

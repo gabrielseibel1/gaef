@@ -1,23 +1,19 @@
 ## Build
 FROM golang:1.19.4 AS build
 
-WORKDIR /app
-
-COPY go.mod go.sum ./
-RUN go mod download && go mod verify
+WORKDIR /build
 
 COPY . .
-
-RUN CGO_ENABLED=0 go build -o server
+RUN CGO_ENABLED=0 go build -o encounter-proposal/server github.com/gabrielseibel1/gaef/encounter-proposal
 
 ## Deploy
 FROM scratch
 
 WORKDIR /app
 
-COPY --from=build /app/.env .
-COPY --from=build /app/server .
+COPY --from=build /build/encounter-proposal/.env .
+COPY --from=build /build/encounter-proposal/server .
 
 EXPOSE 8080
 
-ENTRYPOINT [ "/app/server" ]
+ENTRYPOINT [ "/app/server","--production=true" ]
