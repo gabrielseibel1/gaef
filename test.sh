@@ -1,25 +1,17 @@
 #!/bin/sh
 
-cd auth || exit
-go test ./... --cover -count=1
-cd ..
+# vet
+go vet
 
-cd encounter-proposal || exit
-go test ./... --cover -count=1
-cd ..
+# unit tests
+go test github.com/gabrielseibel1/gaef/auth/... --cover -count=1
+go test github.com/gabrielseibel1/gaef/encounter-proposal/... --cover -count=1
+go test github.com/gabrielseibel1/gaef/group/... --cover -count=1
+go test github.com/gabrielseibel1/gaef/user/... --cover -count=1
 
-cd group || exit
-go test ./... --cover -count=1
-cd ..
-
-cd user || exit
-go test ./... --cover -count=1
-cd ..
-
+# integration tests
 docker compose up -d --build
 sleep 1s
-cd client || exit
-go test ./... --cover -count=1
-cd ..
+go test github.com/gabrielseibel1/gaef/client/... --cover -count=1
 docker compose down --volumes
 
