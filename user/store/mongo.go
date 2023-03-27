@@ -3,8 +3,8 @@ package store
 import (
 	"context"
 	"errors"
+	"github.com/gabrielseibel1/gaef/types"
 
-	"github.com/gabrielseibel1/gaef/user/domain"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -20,66 +20,72 @@ func NewMongoStore(collection *mongo.Collection) *MongoStore {
 	}
 }
 
-func (ms MongoStore) Create(user *domain.UserWithHashedPassword, ctx context.Context) (string, error) {
+func (ms MongoStore) Create(ctx context.Context, user types.User) (string, error) {
+	user.ID = ""
 	res, err := ms.collection.InsertOne(ctx, user)
 	if err != nil {
 		return "", err
 	}
+
 	id := res.InsertedID.(primitive.ObjectID).Hex()
 	return id, nil
 }
 
-func (ms MongoStore) ReadByID(id string, ctx context.Context) (*domain.User, error) {
+func (ms MongoStore) ReadByID(ctx context.Context, id string) (types.User, error) {
 	hexID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
-		return nil, err
+		return types.User{}, err
 	}
+
 	res := ms.collection.FindOne(ctx, bson.M{"_id": hexID})
 	if res.Err() != nil {
-		return nil, res.Err()
+		return types.User{}, res.Err()
 	}
-	var user domain.UserWithHashedPassword
+
+	var user types.User
 	err = res.Decode(&user)
 	if err != nil {
-		return nil, err
+		return types.User{}, err
 	}
-	user.ID = id
-	return domain.ToSimplifiedUser(&user), err
+	return user, err
 }
 
-func (ms MongoStore) ReadSensitiveByEmail(email string, ctx context.Context) (*domain.UserWithHashedPassword, error) {
+func (ms MongoStore) ReadSensitiveByEmail(ctx context.Context, email string) (types.User, error) {
 	res := ms.collection.FindOne(ctx, bson.M{"email": email})
 	if res.Err() != nil {
-		return nil, res.Err()
+		return types.User{}, res.Err()
 	}
-	var user domain.UserWithHashedPassword
+
+	var user types.User
 	err := res.Decode(&user)
 	if err != nil {
-		return nil, err
+		return types.User{}, err
 	}
-	return &user, err
+	return user, err
 }
 
-func (ms MongoStore) Update(user *domain.User, ctx context.Context) (*domain.User, error) {
+func (ms MongoStore) Update(ctx context.Context, user types.User) error {
 	hexID, err := primitive.ObjectIDFromHex(user.ID)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	res, err := ms.collection.UpdateOne(ctx, bson.M{"_id": hexID}, bson.M{"$set": user})
+
+	res, err := ms.collection.UpdateOne(ctx, bson.M{"_id": hexID}, bson.M{"$set": bson.M{"name": user.Name}})
 	if err != nil {
-		return nil, err
+		return err
 	}
 	if res.MatchedCount == 0 {
-		return nil, errors.New("no such user")
+		return errors.New("no such user")
 	}
-	return user, nil
+	return nil
 }
 
-func (ms MongoStore) Delete(id string, ctx context.Context) error {
+func (ms MongoStore) Delete(ctx context.Context, id string) error {
 	hexID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
 		return err
 	}
+
 	res, err := ms.collection.DeleteOne(ctx, bson.M{"_id": hexID})
 	if err != nil {
 		return err

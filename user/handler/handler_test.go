@@ -5,16 +5,15 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/gabrielseibel1/gaef/types"
+	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"testing"
 	"time"
-
-	"github.com/gabrielseibel1/gaef/user/domain"
-	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt"
 )
 
 func TestHandler_JWTAuthMiddleware_OK(t *testing.T) {
@@ -36,7 +35,7 @@ func TestHandler_JWTAuthMiddleware_OK(t *testing.T) {
 	c.AddParam("id", "1234567890")
 
 	// run code under test
-	New(nil, nil, nil, nil, nil, []byte("test")).JWTAuthMiddleware()(c)
+	New(nil, nil, nil, nil, nil, nil, nil, []byte("test")).JWTAuthMiddleware()(c)
 
 	// assertions
 	if got := w.Body.String(); got != "" {
@@ -65,7 +64,7 @@ func TestHandler_JWTAuthMiddleware_NoJWT(t *testing.T) {
 	c.AddParam("id", "1234567890")
 
 	// run code under test
-	New(nil, nil, nil, nil, nil, []byte("test")).JWTAuthMiddleware()(c)
+	New(nil, nil, nil, nil, nil, nil, nil, []byte("test")).JWTAuthMiddleware()(c)
 
 	// assertions
 	var resp struct {
@@ -108,7 +107,7 @@ func TestHandler_JWTAuthMiddleware_InvalidJWTUser(t *testing.T) {
 	c.AddParam("id", "1234567890")
 
 	// run code under test
-	New(nil, nil, nil, nil, nil, []byte("test")).JWTAuthMiddleware()(c)
+	New(nil, nil, nil, nil, nil, nil, nil, []byte("test")).JWTAuthMiddleware()(c)
 
 	// assertions
 	var resp struct {
@@ -151,7 +150,7 @@ func TestHandler_JWTAuthMiddleware_InvalidJWTSig(t *testing.T) {
 	c.AddParam("id", "1234567890")
 
 	// run code under test
-	New(nil, nil, nil, nil, nil, []byte("not-the-one-used-to-sign-token")).JWTAuthMiddleware()(c)
+	New(nil, nil, nil, nil, nil, nil, nil, []byte("not-the-one-used-to-sign-token")).JWTAuthMiddleware()(c)
 
 	// assertions
 	var resp struct {
@@ -190,7 +189,7 @@ func TestHandler_JWTAuthMiddleware_EmptyJWTClaims(t *testing.T) {
 	c.AddParam("id", "1234567890")
 
 	// run code under test
-	New(nil, nil, nil, nil, nil, []byte("test")).JWTAuthMiddleware()(c)
+	New(nil, nil, nil, nil, nil, nil, nil, []byte("test")).JWTAuthMiddleware()(c)
 
 	// assertions
 	var resp struct {
@@ -216,7 +215,7 @@ func TestHandler_JWTAuthMiddleware_EmptyJWTClaims(t *testing.T) {
 
 type mockCreator struct {
 	// receive
-	user     domain.User
+	user     types.User
 	password string
 	ctx      context.Context
 
@@ -225,15 +224,52 @@ type mockCreator struct {
 	err error
 }
 
-func (mc *mockCreator) Create(user *domain.User, password string, ctx context.Context) (string, error) {
-	mc.user = *user
-	mc.password = password
+func (mc *mockCreator) Create(ctx context.Context, user types.User) (string, error) {
+	mc.user = user
+	mc.password = user.HashedPassword
 	mc.ctx = ctx
 	return mc.id, mc.err
 }
 
+type mockByEmailReader struct {
+	// receive
+	ctx   context.Context
+	email string
+
+	// return
+	user types.User
+	err  error
+}
+
+func (m *mockByEmailReader) ReadSensitiveByEmail(ctx context.Context, email string) (types.User, error) {
+	m.ctx = ctx
+	m.email = email
+	return m.user, m.err
+}
+
+type mockHasher struct {
+	// receive
+	password string
+
+	// return
+	hash string
+	err  error
+}
+
+func (m *mockHasher) GenerateFromPassword(password string) (string, error) {
+	m.password = password
+	return m.hash, m.err
+}
+
 func TestHandler_Signup_OK(t *testing.T) {
 	// prepare test setup
+	mockByEmailReader := &mockByEmailReader{
+		err: errors.New("mock email reader error"),
+	}
+	mockHasher := &mockHasher{
+		hash: "dummy-hashed-password",
+		err:  nil,
+	}
 	mockCreator := &mockCreator{
 		id:  "1234567890",
 		err: nil,
@@ -259,7 +295,7 @@ func TestHandler_Signup_OK(t *testing.T) {
 	c.Request = req
 
 	// run code under test
-	New(mockCreator, nil, nil, nil, nil, nil).Signup()(c)
+	New(mockHasher, nil, mockCreator, nil, mockByEmailReader, nil, nil, nil).Signup()(c)
 
 	// assertions
 	var resp struct {
@@ -275,13 +311,22 @@ func TestHandler_Signup_OK(t *testing.T) {
 	if got, want := w.Code, http.StatusCreated; got != want {
 		t.Errorf("got status code %d, want %d", got, want)
 	}
+	if got, want := mockByEmailReader.email, reqBody.Email; got != want {
+		t.Errorf("got %s, want %s", got, want)
+	}
+	if got, want := mockByEmailReader.ctx, c; got != want {
+		t.Errorf("got %v, want %v", got, want)
+	}
+	if got, want := mockHasher.password, reqBody.Password; got != want {
+		t.Errorf("got %s, want %s", got, want)
+	}
 	if got, want := mockCreator.user.Name, reqBody.Name; got != want {
 		t.Errorf("got created name %s, want %s", got, want)
 	}
 	if got, want := mockCreator.user.Email, reqBody.Email; got != want {
 		t.Errorf("got created email %s, want %s", got, want)
 	}
-	if got, want := mockCreator.password, reqBody.Password; got != want {
+	if got, want := mockCreator.password, mockHasher.hash; got != want {
 		t.Errorf("got created password %s, want %s", got, want)
 	}
 	if got, want := mockCreator.ctx, c; got != want {
@@ -291,6 +336,13 @@ func TestHandler_Signup_OK(t *testing.T) {
 
 func TestHandler_Signup_MissingName(t *testing.T) {
 	// prepare test setup
+	mockByEmailReader := &mockByEmailReader{
+		err: errors.New("mock email reader error"),
+	}
+	mockHasher := &mockHasher{
+		hash: "dummy-hashed-password",
+		err:  nil,
+	}
 	mockCreator := &mockCreator{
 		id:  "1234567890",
 		err: nil,
@@ -314,18 +366,18 @@ func TestHandler_Signup_MissingName(t *testing.T) {
 	c.Request = req
 
 	// run code under test
-	New(mockCreator, nil, nil, nil, nil, nil).Signup()(c)
+	New(mockHasher, nil, mockCreator, nil, mockByEmailReader, nil, nil, nil).Signup()(c)
 
 	// assertions
 	var resp struct {
-		Err string `json:"error"`
+		Error string
 	}
 	err = json.NewDecoder(w.Result().Body).Decode(&resp)
 	if err != nil {
 		t.Errorf("got error %s decoding response, want nil", err)
 	}
-	if got, want := resp.Err, "missing user data"; got != want {
-		t.Errorf("got response body error %s, want %s", got, want)
+	if got, want := resp.Error, "missing user data"; got != want {
+		t.Errorf("got response body id %s, want %s", got, want)
 	}
 	if got, want := w.Code, http.StatusBadRequest; got != want {
 		t.Errorf("got status code %d, want %d", got, want)
@@ -334,6 +386,13 @@ func TestHandler_Signup_MissingName(t *testing.T) {
 
 func TestHandler_Signup_MissingEmail(t *testing.T) {
 	// prepare test setup
+	mockByEmailReader := &mockByEmailReader{
+		err: errors.New("mock email reader error"),
+	}
+	mockHasher := &mockHasher{
+		hash: "dummy-hashed-password",
+		err:  nil,
+	}
 	mockCreator := &mockCreator{
 		id:  "1234567890",
 		err: nil,
@@ -344,7 +403,7 @@ func TestHandler_Signup_MissingEmail(t *testing.T) {
 		Name     string `json:"name"`
 		Password string `json:"password"`
 	}{
-		Name:     "Gabriel do Souza Seibel",
+		Name:     "Gabriel de Souza Seibel",
 		Password: "test123",
 	}
 	reqBodyJson, err := json.Marshal(reqBody)
@@ -357,18 +416,18 @@ func TestHandler_Signup_MissingEmail(t *testing.T) {
 	c.Request = req
 
 	// run code under test
-	New(mockCreator, nil, nil, nil, nil, nil).Signup()(c)
+	New(mockHasher, nil, mockCreator, nil, mockByEmailReader, nil, nil, nil).Signup()(c)
 
 	// assertions
 	var resp struct {
-		Err string `json:"error"`
+		Error string
 	}
 	err = json.NewDecoder(w.Result().Body).Decode(&resp)
 	if err != nil {
 		t.Errorf("got error %s decoding response, want nil", err)
 	}
-	if got, want := resp.Err, "missing user data"; got != want {
-		t.Errorf("got response body error %s, want %s", got, want)
+	if got, want := resp.Error, "missing user data"; got != want {
+		t.Errorf("got response body id %s, want %s", got, want)
 	}
 	if got, want := w.Code, http.StatusBadRequest; got != want {
 		t.Errorf("got status code %d, want %d", got, want)
@@ -377,6 +436,13 @@ func TestHandler_Signup_MissingEmail(t *testing.T) {
 
 func TestHandler_Signup_MissingPassword(t *testing.T) {
 	// prepare test setup
+	mockByEmailReader := &mockByEmailReader{
+		err: errors.New("mock email reader error"),
+	}
+	mockHasher := &mockHasher{
+		hash: "dummy-hashed-password",
+		err:  nil,
+	}
 	mockCreator := &mockCreator{
 		id:  "1234567890",
 		err: nil,
@@ -387,7 +453,7 @@ func TestHandler_Signup_MissingPassword(t *testing.T) {
 		Name  string `json:"name"`
 		Email string `json:"email"`
 	}{
-		Name:  "Gabriel do Souza Seibel",
+		Name:  "Gabriel de Souza Seibel",
 		Email: "gabriel.seibel@tuta.io",
 	}
 	reqBodyJson, err := json.Marshal(reqBody)
@@ -400,26 +466,152 @@ func TestHandler_Signup_MissingPassword(t *testing.T) {
 	c.Request = req
 
 	// run code under test
-	New(mockCreator, nil, nil, nil, nil, nil).Signup()(c)
+	New(mockHasher, nil, mockCreator, nil, mockByEmailReader, nil, nil, nil).Signup()(c)
 
 	// assertions
 	var resp struct {
-		Err string `json:"error"`
+		Error string
 	}
 	err = json.NewDecoder(w.Result().Body).Decode(&resp)
 	if err != nil {
 		t.Errorf("got error %s decoding response, want nil", err)
 	}
-	if got, want := resp.Err, "missing user data"; got != want {
-		t.Errorf("got response body error %s, want %s", got, want)
+	if got, want := resp.Error, "missing user data"; got != want {
+		t.Errorf("got response body id %s, want %s", got, want)
 	}
 	if got, want := w.Code, http.StatusBadRequest; got != want {
 		t.Errorf("got status code %d, want %d", got, want)
 	}
 }
 
+func TestHandler_Signup_ReaderNilError(t *testing.T) {
+	// prepare test setup
+	mockByEmailReader := &mockByEmailReader{
+		err: nil,
+	}
+	mockHasher := &mockHasher{
+		hash: "dummy-hashed-password",
+		err:  nil,
+	}
+	mockCreator := &mockCreator{
+		id:  "1234567890",
+		err: nil,
+	}
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	var reqBody = struct {
+		Name     string `json:"name"`
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}{
+		Name:     "Gabriel do Souza Seibel",
+		Email:    "gabriel.seibel@tuta.io",
+		Password: "test123",
+	}
+	reqBodyJson, err := json.Marshal(reqBody)
+	if err != nil {
+		t.Error("failed to marshal json")
+	}
+	req := &http.Request{
+		Body: io.NopCloser(bytes.NewBufferString(string(reqBodyJson))),
+	}
+	c.Request = req
+
+	// run code under test
+	New(mockHasher, nil, mockCreator, nil, mockByEmailReader, nil, nil, nil).Signup()(c)
+
+	// assertions
+	var resp struct {
+		Error string
+	}
+	err = json.NewDecoder(w.Result().Body).Decode(&resp)
+	if err != nil {
+		t.Errorf("got error %s decoding response, want nil", err)
+	}
+	if got, want := resp.Error, "email is taken"; got != want {
+		t.Errorf("got response body id %s, want %s", got, want)
+	}
+	if got, want := w.Code, http.StatusUnprocessableEntity; got != want {
+		t.Errorf("got status code %d, want %d", got, want)
+	}
+	if got, want := mockByEmailReader.email, reqBody.Email; got != want {
+		t.Errorf("got %s, want %s", got, want)
+	}
+	if got, want := mockByEmailReader.ctx, c; got != want {
+		t.Errorf("got %v, want %v", got, want)
+	}
+}
+
+func TestHandler_Signup_HasherError(t *testing.T) {
+	// prepare test setup
+	mockByEmailReader := &mockByEmailReader{
+		err: errors.New("mock email reader error"),
+	}
+	mockHasher := &mockHasher{
+		hash: "dummy-hashed-password",
+		err:  errors.New("mock hasher error"),
+	}
+	mockCreator := &mockCreator{
+		id:  "1234567890",
+		err: nil,
+	}
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	var reqBody = struct {
+		Name     string `json:"name"`
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}{
+		Name:     "Gabriel do Souza Seibel",
+		Email:    "gabriel.seibel@tuta.io",
+		Password: "test123",
+	}
+	reqBodyJson, err := json.Marshal(reqBody)
+	if err != nil {
+		t.Error("failed to marshal json")
+	}
+	req := &http.Request{
+		Body: io.NopCloser(bytes.NewBufferString(string(reqBodyJson))),
+	}
+	c.Request = req
+
+	// run code under test
+	New(mockHasher, nil, mockCreator, nil, mockByEmailReader, nil, nil, nil).Signup()(c)
+
+	// assertions
+	var resp struct {
+		Error string
+	}
+	err = json.NewDecoder(w.Result().Body).Decode(&resp)
+	if err != nil {
+		t.Errorf("got error %s decoding response, want nil", err)
+	}
+	if got, want := resp.Error, "bad password"; got != want {
+		t.Errorf("got response body id %s, want %s", got, want)
+	}
+	if got, want := w.Code, http.StatusUnprocessableEntity; got != want {
+		t.Errorf("got status code %d, want %d", got, want)
+	}
+	if got, want := mockByEmailReader.email, reqBody.Email; got != want {
+		t.Errorf("got %s, want %s", got, want)
+	}
+	if got, want := mockByEmailReader.ctx, c; got != want {
+		t.Errorf("got %v, want %v", got, want)
+	}
+	if got, want := mockHasher.password, reqBody.Password; got != want {
+		t.Errorf("got %s, want %s", got, want)
+	}
+}
+
 func TestHandler_Signup_CreatorError(t *testing.T) {
 	// prepare test setup
+	mockByEmailReader := &mockByEmailReader{
+		err: errors.New("mock email reader error"),
+	}
+	mockHasher := &mockHasher{
+		hash: "dummy-hashed-password",
+		err:  nil,
+	}
 	mockCreator := &mockCreator{
 		id:  "1234567890",
 		err: errors.New("mock creator error"),
@@ -445,50 +637,72 @@ func TestHandler_Signup_CreatorError(t *testing.T) {
 	c.Request = req
 
 	// run code under test
-	New(mockCreator, nil, nil, nil, nil, nil).Signup()(c)
+	New(mockHasher, nil, mockCreator, nil, mockByEmailReader, nil, nil, nil).Signup()(c)
 
 	// assertions
 	var resp struct {
-		Err string `json:"error"`
+		Error string
 	}
 	err = json.NewDecoder(w.Result().Body).Decode(&resp)
 	if err != nil {
 		t.Errorf("got error %s decoding response, want nil", err)
 	}
-	if got, want := resp.Err, "email is taken"; got != want {
-		t.Errorf("got response body error %s, want %s", got, want)
+	if got, want := resp.Error, "email is taken"; got != want {
+		t.Errorf("got response body id %s, want %s", got, want)
 	}
-	if got, want := w.Code, http.StatusBadRequest; got != want {
+	if got, want := w.Code, http.StatusUnprocessableEntity; got != want {
 		t.Errorf("got status code %d, want %d", got, want)
 	}
+	if got, want := mockByEmailReader.email, reqBody.Email; got != want {
+		t.Errorf("got %s, want %s", got, want)
+	}
+	if got, want := mockByEmailReader.ctx, c; got != want {
+		t.Errorf("got %v, want %v", got, want)
+	}
+	if got, want := mockHasher.password, reqBody.Password; got != want {
+		t.Errorf("got %s, want %s", got, want)
+	}
+	if got, want := mockCreator.user.Name, reqBody.Name; got != want {
+		t.Errorf("got created name %s, want %s", got, want)
+	}
+	if got, want := mockCreator.user.Email, reqBody.Email; got != want {
+		t.Errorf("got created email %s, want %s", got, want)
+	}
+	if got, want := mockCreator.password, mockHasher.hash; got != want {
+		t.Errorf("got created password %s, want %s", got, want)
+	}
+	if got, want := mockCreator.ctx, c; got != want {
+		t.Errorf("got passed context %v, want %v", got, want)
+	}
 }
 
-type mockLoginer struct {
-	// received
-	email    string
+type mockVerifier struct {
+	// receive
+	hash     string
 	password string
-	ctx      context.Context
 
-	// returned
-	user *domain.User
-	err  error
+	// return
+	err error
 }
 
-func (ml *mockLoginer) Login(email string, password string, ctx context.Context) (*domain.User, error) {
-	ml.email = email
-	ml.password = password
-	ml.ctx = ctx
-	return ml.user, ml.err
+func (m *mockVerifier) CompareHashAndPassword(hashedPassword, password string) error {
+	m.hash = hashedPassword
+	m.password = password
+	return m.err
 }
 
 func TestHandler_Login_OK(t *testing.T) {
 	// prepare test setup
-	mockLoginer := &mockLoginer{
-		user: &domain.User{
-			ID:    "dummyID",
-			Name:  "dummyName",
-			Email: "dummyEmail",
+	mockByEmailReader := &mockByEmailReader{
+		user: types.User{
+			ID:             "dummyID",
+			Name:           "dummyName",
+			Email:          "dummyEmail",
+			HashedPassword: "dummyHash",
 		},
+		err: nil,
+	}
+	mockVerifier := &mockVerifier{
 		err: nil,
 	}
 	w := httptest.NewRecorder()
@@ -511,7 +725,7 @@ func TestHandler_Login_OK(t *testing.T) {
 	jwtSecret := []byte("test")
 
 	// run code under test
-	New(nil, mockLoginer, nil, nil, nil, jwtSecret).Login()(c)
+	New(nil, mockVerifier, nil, nil, mockByEmailReader, nil, nil, jwtSecret).Login()(c)
 
 	// assertions
 	var resp struct {
@@ -537,15 +751,15 @@ func TestHandler_Login_OK(t *testing.T) {
 
 	claims, _ := token.Claims.(jwt.MapClaims)
 	tokenName := claims["name"].(string)
-	if got, want := tokenName, mockLoginer.user.Name; got != want {
+	if got, want := tokenName, mockByEmailReader.user.Name; got != want {
 		t.Errorf("got token claim \"name\": %s, want %s", got, want)
 	}
 	tokenEmail := claims["email"].(string)
-	if got, want := tokenEmail, mockLoginer.user.Email; got != want {
+	if got, want := tokenEmail, mockByEmailReader.user.Email; got != want {
 		t.Errorf("got token claim \"email\": %s, want %s", got, want)
 	}
 	tokenSub := claims["sub"].(string)
-	if got, want := tokenSub, mockLoginer.user.ID; got != want {
+	if got, want := tokenSub, mockByEmailReader.user.ID; got != want {
 		t.Errorf("got token claim \"sub\": %s, want %s", got, want)
 	}
 	tokenExp := claims["exp"].(float64)
@@ -555,25 +769,32 @@ func TestHandler_Login_OK(t *testing.T) {
 		t.Errorf("got token claim \"exp\": %s, want 1s from %s", gotExp, wantExp)
 	}
 
-	if got, want := mockLoginer.email, reqBody.Email; got != want {
+	if got, want := mockByEmailReader.ctx, c; got != want {
+		t.Errorf("got passed context %v, want %v", got, want)
+	}
+	if got, want := mockByEmailReader.email, reqBody.Email; got != want {
 		t.Errorf("got loginer email = %s, want %s", got, want)
 	}
-	if got, want := mockLoginer.password, reqBody.Password; got != want {
+	if got, want := mockVerifier.password, reqBody.Password; got != want {
 		t.Errorf("got loginer password = %s, want %s", got, want)
 	}
-	if got, want := mockLoginer.ctx, c; got != want {
-		t.Errorf("got passed context %v, want %v", got, want)
+	if got, want := mockVerifier.hash, mockByEmailReader.user.HashedPassword; got != want {
+		t.Errorf("got loginer password = %s, want %s", got, want)
 	}
 }
 
 func TestHandler_Login_MissingEmail(t *testing.T) {
 	// prepare test setup
-	mockLoginer := &mockLoginer{
-		user: &domain.User{
-			ID:    "dummyID",
-			Name:  "dummyName",
-			Email: "dummyEmail",
+	mockByEmailReader := &mockByEmailReader{
+		user: types.User{
+			ID:             "dummyID",
+			Name:           "dummyName",
+			Email:          "dummyEmail",
+			HashedPassword: "dummyHash",
 		},
+		err: nil,
+	}
+	mockVerifier := &mockVerifier{
 		err: nil,
 	}
 	w := httptest.NewRecorder()
@@ -594,7 +815,7 @@ func TestHandler_Login_MissingEmail(t *testing.T) {
 	jwtSecret := []byte("test")
 
 	// run code under test
-	New(nil, mockLoginer, nil, nil, nil, jwtSecret).Login()(c)
+	New(nil, mockVerifier, nil, nil, mockByEmailReader, nil, nil, jwtSecret).Login()(c)
 
 	// assertions
 	var resp struct {
@@ -604,7 +825,7 @@ func TestHandler_Login_MissingEmail(t *testing.T) {
 	if err != nil {
 		t.Errorf("got error %s decoding response, want nil", err)
 	}
-	if got, want := resp.Err, "unauthorized"; got != want {
+	if got, want := resp.Err, "missing user data"; got != want {
 		t.Errorf("got response body error: %s, want %s", got, want)
 	}
 	if got, want := w.Code, http.StatusBadRequest; got != want {
@@ -614,12 +835,16 @@ func TestHandler_Login_MissingEmail(t *testing.T) {
 
 func TestHandler_Login_MissingPassword(t *testing.T) {
 	// prepare test setup
-	mockLoginer := &mockLoginer{
-		user: &domain.User{
-			ID:    "dummyID",
-			Name:  "dummyName",
-			Email: "dummyEmail",
+	mockByEmailReader := &mockByEmailReader{
+		user: types.User{
+			ID:             "dummyID",
+			Name:           "dummyName",
+			Email:          "dummyEmail",
+			HashedPassword: "dummyHash",
 		},
+		err: nil,
+	}
+	mockVerifier := &mockVerifier{
 		err: nil,
 	}
 	w := httptest.NewRecorder()
@@ -640,7 +865,7 @@ func TestHandler_Login_MissingPassword(t *testing.T) {
 	jwtSecret := []byte("test")
 
 	// run code under test
-	New(nil, mockLoginer, nil, nil, nil, jwtSecret).Login()(c)
+	New(nil, mockVerifier, nil, nil, mockByEmailReader, nil, nil, jwtSecret).Login()(c)
 
 	// assertions
 	var resp struct {
@@ -650,7 +875,7 @@ func TestHandler_Login_MissingPassword(t *testing.T) {
 	if err != nil {
 		t.Errorf("got error %s decoding response, want nil", err)
 	}
-	if got, want := resp.Err, "unauthorized"; got != want {
+	if got, want := resp.Err, "missing user data"; got != want {
 		t.Errorf("got response body error: %s, want %s", got, want)
 	}
 	if got, want := w.Code, http.StatusBadRequest; got != want {
@@ -658,15 +883,19 @@ func TestHandler_Login_MissingPassword(t *testing.T) {
 	}
 }
 
-func TestHandler_Login_LoginerError(t *testing.T) {
+func TestHandler_Login_ReaderError(t *testing.T) {
 	// prepare test setup
-	mockLoginer := &mockLoginer{
-		user: &domain.User{
-			ID:    "dummyID",
-			Name:  "dummyName",
-			Email: "dummyEmail",
+	mockByEmailReader := &mockByEmailReader{
+		user: types.User{
+			ID:             "dummyID",
+			Name:           "dummyName",
+			Email:          "dummyEmail",
+			HashedPassword: "dummyHash",
 		},
-		err: errors.New("mock loginer error"),
+		err: errors.New("mock reader error"),
+	}
+	mockVerifier := &mockVerifier{
+		err: nil,
 	}
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -688,7 +917,7 @@ func TestHandler_Login_LoginerError(t *testing.T) {
 	jwtSecret := []byte("test")
 
 	// run code under test
-	New(nil, mockLoginer, nil, nil, nil, jwtSecret).Login()(c)
+	New(nil, mockVerifier, nil, nil, mockByEmailReader, nil, nil, jwtSecret).Login()(c)
 
 	// assertions
 	var resp struct {
@@ -704,6 +933,76 @@ func TestHandler_Login_LoginerError(t *testing.T) {
 	if got, want := w.Code, http.StatusUnauthorized; got != want {
 		t.Errorf("got status code %d, want %d", got, want)
 	}
+	if got, want := mockByEmailReader.ctx, c; got != want {
+		t.Errorf("got passed context %v, want %v", got, want)
+	}
+	if got, want := mockByEmailReader.email, reqBody.Email; got != want {
+		t.Errorf("got loginer email = %s, want %s", got, want)
+	}
+}
+
+func TestHandler_Login_VerifierError(t *testing.T) {
+	// prepare test setup
+	mockByEmailReader := &mockByEmailReader{
+		user: types.User{
+			ID:             "dummyID",
+			Name:           "dummyName",
+			Email:          "dummyEmail",
+			HashedPassword: "dummyHash",
+		},
+		err: nil,
+	}
+	mockVerifier := &mockVerifier{
+		err: errors.New("mock verifier error"),
+	}
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	var reqBody = struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}{
+		Email:    "gabriel.seibel@tuta.io",
+		Password: "test123",
+	}
+	reqBodyJson, err := json.Marshal(reqBody)
+	if err != nil {
+		t.Error("failed to marshal json")
+	}
+	req := &http.Request{
+		Body: io.NopCloser(bytes.NewBufferString(string(reqBodyJson))),
+	}
+	c.Request = req
+	jwtSecret := []byte("test")
+
+	// run code under test
+	New(nil, mockVerifier, nil, nil, mockByEmailReader, nil, nil, jwtSecret).Login()(c)
+
+	// assertions
+	var resp struct {
+		Err string `json:"error"`
+	}
+	err = json.NewDecoder(w.Result().Body).Decode(&resp)
+	if err != nil {
+		t.Errorf("got error %s decoding response, want nil", err)
+	}
+	if got, want := resp.Err, "unauthorized"; got != want {
+		t.Errorf("got response body error: %s, want %s", got, want)
+	}
+	if got, want := w.Code, http.StatusUnauthorized; got != want {
+		t.Errorf("got status code %d, want %d", got, want)
+	}
+	if got, want := mockByEmailReader.ctx, c; got != want {
+		t.Errorf("got passed context %v, want %v", got, want)
+	}
+	if got, want := mockByEmailReader.email, reqBody.Email; got != want {
+		t.Errorf("got loginer email = %s, want %s", got, want)
+	}
+	if got, want := mockVerifier.password, reqBody.Password; got != want {
+		t.Errorf("got loginer password = %s, want %s", got, want)
+	}
+	if got, want := mockVerifier.hash, mockByEmailReader.user.HashedPassword; got != want {
+		t.Errorf("got loginer password = %s, want %s", got, want)
+	}
 }
 
 func TestHandler_GetIDFromToken(t *testing.T) {
@@ -714,7 +1013,7 @@ func TestHandler_GetIDFromToken(t *testing.T) {
 	c.Set("AuthenticatedUserID", dummyID)
 
 	// run code under test
-	New(nil, nil, nil, nil, nil, nil).GetIDFromToken()(c)
+	New(nil, nil, nil, nil, nil, nil, nil, nil).GetIDFromToken()(c)
 
 	// assertions
 	var resp struct {
@@ -732,17 +1031,17 @@ func TestHandler_GetIDFromToken(t *testing.T) {
 	}
 }
 
-type mockReader struct {
+type mockByIDReader struct {
 	// receive
 	id  string
 	ctx context.Context
 
 	// return
-	user *domain.User
+	user types.User
 	err  error
 }
 
-func (mr *mockReader) Read(id string, ctx context.Context) (*domain.User, error) {
+func (mr *mockByIDReader) ReadByID(ctx context.Context, id string) (types.User, error) {
 	mr.id = id
 	mr.ctx = ctx
 	return mr.user, mr.err
@@ -750,8 +1049,8 @@ func (mr *mockReader) Read(id string, ctx context.Context) (*domain.User, error)
 
 func TestHandler_GetUserFromID_OK(t *testing.T) {
 	// prepare test setup
-	mockReader := &mockReader{
-		user: &domain.User{
+	mockReader := &mockByIDReader{
+		user: types.User{
 			ID:    "mockReaderID",
 			Name:  "mockReaderName",
 			Email: "mockReaderEmail",
@@ -764,39 +1063,39 @@ func TestHandler_GetUserFromID_OK(t *testing.T) {
 	c.Set("AuthenticatedUserID", dummyID)
 
 	// run code under test
-	New(nil, nil, mockReader, nil, nil, nil).GetUserFromID()(c)
+	New(nil, nil, nil, mockReader, nil, nil, nil, nil).GetUserFromID()(c)
 
 	// assertions
 	var resp struct {
-		User domain.User `json:"user"`
+		User types.User `json:"user"`
 	}
 	err := json.NewDecoder(w.Result().Body).Decode(&resp)
 	if err != nil {
 		t.Errorf("got error %s decoding response, want nil", err)
 	}
-	if got, want := resp.User, *mockReader.user; got != want {
+	if got, want := resp.User, mockReader.user; got != want {
 		t.Errorf("got response body id %s, want %s", got, want)
 	}
 	if got, want := w.Code, http.StatusOK; got != want {
 		t.Errorf("got status code %d, want %d", got, want)
 	}
 	if got, want := mockReader.id, dummyID; got != want {
-		t.Errorf("mockReader.Read() received id %s, want %s", got, want)
+		t.Errorf("mockByIDReader.Read() received id %s, want %s", got, want)
 	}
 	if got, want := mockReader.ctx, c; got != want {
-		t.Errorf("mockReader.Read() received id %v, want %v", got, want)
+		t.Errorf("mockByIDReader.Read() received id %v, want %v", got, want)
 	}
 }
 
 func TestHandler_GetUserFromID_ReaderError(t *testing.T) {
 	// prepare test setup
-	mockReader := &mockReader{
-		user: &domain.User{
+	mockReader := &mockByIDReader{
+		user: types.User{
 			ID:    "mockReaderID",
 			Name:  "mockReaderName",
 			Email: "mockReaderEmail",
 		},
-		err: errors.New("mock reader error"),
+		err: errors.New("mock byIDReader error"),
 	}
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -804,7 +1103,7 @@ func TestHandler_GetUserFromID_ReaderError(t *testing.T) {
 	c.Set("AuthenticatedUserID", dummyID)
 
 	// run code under test
-	New(nil, nil, mockReader, nil, nil, nil).GetUserFromID()(c)
+	New(nil, nil, nil, mockReader, nil, nil, nil, nil).GetUserFromID()(c)
 
 	// assertions
 	var resp struct {
@@ -821,36 +1120,34 @@ func TestHandler_GetUserFromID_ReaderError(t *testing.T) {
 		t.Errorf("got status code %d, want %d", got, want)
 	}
 	if got, want := mockReader.id, dummyID; got != want {
-		t.Errorf("mockReader.Read() received id %s, want %s", got, want)
+		t.Errorf("mockByIDReader.Read() received id %s, want %s", got, want)
 	}
 	if got, want := mockReader.ctx, c; got != want {
-		t.Errorf("mockReader.Read() received id %v, want %v", got, want)
+		t.Errorf("mockByIDReader.Read() received id %v, want %v", got, want)
 	}
 }
 
 type mockUpdater struct {
 	// receive
-	receiveUser *domain.User
-	ctx         context.Context
+	user types.User
+	ctx  context.Context
 
 	// return
-	returnUser *domain.User
-	err        error
+	err error
 }
 
-func (mu *mockUpdater) Update(user *domain.User, ctx context.Context) (*domain.User, error) {
-	mu.receiveUser = user
+func (mu *mockUpdater) Update(ctx context.Context, user types.User) error {
+	mu.user = user
 	mu.ctx = ctx
-	return mu.returnUser, mu.err
+	return mu.err
 }
 
 func TestHandler_UpdateUser_OK(t *testing.T) {
 	// prepare test setup
 	mockUpdater := &mockUpdater{
-		returnUser: &domain.User{
-			ID:    "mockReaderID",
-			Name:  "mockReaderName",
-			Email: "mockReaderEmail",
+		user: types.User{
+			ID:   "mockReaderID",
+			Name: "mockReaderName",
 		},
 		err: nil,
 	}
@@ -858,10 +1155,9 @@ func TestHandler_UpdateUser_OK(t *testing.T) {
 	c, _ := gin.CreateTestContext(w)
 	dummyID := "dummyID"
 	c.Set("AuthenticatedUserID", dummyID)
-	reqBody := domain.User{
-		ID:    dummyID,
-		Name:  "bodyName",
-		Email: "bodyEmail",
+	reqBody := types.User{
+		ID:   dummyID,
+		Name: "bodyName",
 	}
 	reqBodyJson, err := json.Marshal(reqBody)
 	if err != nil {
@@ -873,23 +1169,23 @@ func TestHandler_UpdateUser_OK(t *testing.T) {
 	c.Request = req
 
 	// run code under test
-	New(nil, nil, nil, mockUpdater, nil, nil).UpdateUser()(c)
+	New(nil, nil, nil, nil, nil, mockUpdater, nil, nil).UpdateUser()(c)
 
 	// assertions
 	var resp struct {
-		User domain.User `json:"user"`
+		User types.User
 	}
 	err = json.NewDecoder(w.Result().Body).Decode(&resp)
 	if err != nil {
 		t.Errorf("got error %s decoding response, want nil", err)
 	}
-	if got, want := resp.User, *mockUpdater.returnUser; got != want {
+	if got, want := resp.User, mockUpdater.user; got != want {
 		t.Errorf("got response body id %s, want %s", got, want)
 	}
 	if got, want := w.Code, http.StatusOK; got != want {
 		t.Errorf("got status code %d, want %d", got, want)
 	}
-	if got, want := *mockUpdater.receiveUser, reqBody; got != want {
+	if got, want := mockUpdater.user, reqBody; got != want {
 		t.Errorf("mockUpdater.Update() received user %s, want %s", got, want)
 	}
 	if got, want := mockUpdater.ctx, c; got != want {
@@ -900,20 +1196,18 @@ func TestHandler_UpdateUser_OK(t *testing.T) {
 func TestHandler_UpdateUser_MismatchedIDs(t *testing.T) {
 	// prepare test setup
 	mockUpdater := &mockUpdater{
-		returnUser: &domain.User{
-			ID:    "mockReaderID",
-			Name:  "mockReaderName",
-			Email: "mockReaderEmail",
+		user: types.User{
+			ID:   "mockReaderID",
+			Name: "mockReaderName",
 		},
 		err: nil,
 	}
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	c.Set("AuthenticatedUserID", "1")
-	reqBody := domain.User{
-		ID:    "2",
-		Name:  "bodyName",
-		Email: "bodyEmail",
+	reqBody := types.User{
+		ID:   "2",
+		Name: "bodyName",
 	}
 	reqBodyJson, err := json.Marshal(reqBody)
 	if err != nil {
@@ -925,7 +1219,7 @@ func TestHandler_UpdateUser_MismatchedIDs(t *testing.T) {
 	c.Request = req
 
 	// run code under test
-	New(nil, nil, nil, mockUpdater, nil, nil).UpdateUser()(c)
+	New(nil, nil, nil, nil, nil, mockUpdater, nil, nil).UpdateUser()(c)
 
 	// assertions
 	var resp struct {
@@ -946,10 +1240,9 @@ func TestHandler_UpdateUser_MismatchedIDs(t *testing.T) {
 func TestHandler_UpdateUser_UpdaterError(t *testing.T) {
 	// prepare test setup
 	mockUpdater := &mockUpdater{
-		returnUser: &domain.User{
-			ID:    "mockReaderID",
-			Name:  "mockReaderName",
-			Email: "mockReaderEmail",
+		user: types.User{
+			ID:   "mockReaderID",
+			Name: "mockReaderName",
 		},
 		err: errors.New("mock updater error"),
 	}
@@ -957,10 +1250,9 @@ func TestHandler_UpdateUser_UpdaterError(t *testing.T) {
 	c, _ := gin.CreateTestContext(w)
 	dummyID := "dummyID"
 	c.Set("AuthenticatedUserID", dummyID)
-	reqBody := domain.User{
-		ID:    dummyID,
-		Name:  "bodyName",
-		Email: "bodyEmail",
+	reqBody := types.User{
+		ID:   dummyID,
+		Name: "bodyName",
 	}
 	reqBodyJson, err := json.Marshal(reqBody)
 	if err != nil {
@@ -972,7 +1264,7 @@ func TestHandler_UpdateUser_UpdaterError(t *testing.T) {
 	c.Request = req
 
 	// run code under test
-	New(nil, nil, nil, mockUpdater, nil, nil).UpdateUser()(c)
+	New(nil, nil, nil, nil, nil, mockUpdater, nil, nil).UpdateUser()(c)
 
 	// assertions
 	var resp struct {
@@ -988,7 +1280,7 @@ func TestHandler_UpdateUser_UpdaterError(t *testing.T) {
 	if got, want := w.Code, http.StatusNotFound; got != want {
 		t.Errorf("got status code %d, want %d", got, want)
 	}
-	if got, want := *mockUpdater.receiveUser, reqBody; got != want {
+	if got, want := mockUpdater.user, reqBody; got != want {
 		t.Errorf("mockUpdater.Update() received user %s, want %s", got, want)
 	}
 	if got, want := mockUpdater.ctx, c; got != want {
@@ -999,20 +1291,18 @@ func TestHandler_UpdateUser_UpdaterError(t *testing.T) {
 func TestHandler_UpdateUser_MissingUserName(t *testing.T) {
 	// prepare test setup
 	mockUpdater := &mockUpdater{
-		returnUser: &domain.User{
-			ID:    "mockReaderID",
-			Name:  "mockReaderName",
-			Email: "mockReaderEmail",
+		user: types.User{
+			ID:   "mockReaderID",
+			Name: "mockReaderName",
 		},
-		err: errors.New("mock updater error"),
+		err: nil,
 	}
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	dummyID := "dummyID"
 	c.Set("AuthenticatedUserID", dummyID)
-	reqBody := domain.User{
-		ID:    dummyID,
-		Email: "bodyEmail",
+	reqBody := types.User{
+		ID: dummyID,
 	}
 	reqBodyJson, err := json.Marshal(reqBody)
 	if err != nil {
@@ -1024,53 +1314,7 @@ func TestHandler_UpdateUser_MissingUserName(t *testing.T) {
 	c.Request = req
 
 	// run code under test
-	New(nil, nil, nil, mockUpdater, nil, nil).UpdateUser()(c)
-
-	// assertions
-	var resp struct {
-		Err string `json:"error"`
-	}
-	err = json.NewDecoder(w.Result().Body).Decode(&resp)
-	if err != nil {
-		t.Errorf("got error %s decoding response, want nil", err)
-	}
-	if got, want := resp.Err, "missing user data"; got != want {
-		t.Errorf("got response body id %s, want %s", got, want)
-	}
-	if got, want := w.Code, http.StatusBadRequest; got != want {
-		t.Errorf("got status code %d, want %d", got, want)
-	}
-}
-
-func TestHandler_UpdateUser_MissingUserEmail(t *testing.T) {
-	// prepare test setup
-	mockUpdater := &mockUpdater{
-		returnUser: &domain.User{
-			ID:    "mockReaderID",
-			Name:  "mockReaderName",
-			Email: "mockReaderEmail",
-		},
-		err: errors.New("mock updater error"),
-	}
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	dummyID := "dummyID"
-	c.Set("AuthenticatedUserID", dummyID)
-	reqBody := domain.User{
-		ID:   dummyID,
-		Name: "bodyName",
-	}
-	reqBodyJson, err := json.Marshal(reqBody)
-	if err != nil {
-		t.Error("failed to marshal json")
-	}
-	req := &http.Request{
-		Body: io.NopCloser(bytes.NewBufferString(string(reqBodyJson))),
-	}
-	c.Request = req
-
-	// run code under test
-	New(nil, nil, nil, mockUpdater, nil, nil).UpdateUser()(c)
+	New(nil, nil, nil, nil, nil, mockUpdater, nil, nil).UpdateUser()(c)
 
 	// assertions
 	var resp struct {
@@ -1097,7 +1341,7 @@ type mockDeleter struct {
 	err error
 }
 
-func (md *mockDeleter) Delete(id string, ctx context.Context) error {
+func (md *mockDeleter) Delete(ctx context.Context, id string) error {
 	md.id = id
 	md.ctx = ctx
 	return md.err
@@ -1114,7 +1358,7 @@ func TestHandler_Delete_OK(t *testing.T) {
 	c.Set("AuthenticatedUserID", dummyID)
 
 	// run code under test
-	New(nil, nil, nil, nil, mockDeleter, nil).DeleteUser()(c)
+	New(nil, nil, nil, nil, nil, nil, mockDeleter, nil).DeleteUser()(c)
 
 	// assertions
 	var resp struct {
@@ -1149,7 +1393,7 @@ func TestHandler_Delete_DeleterError(t *testing.T) {
 	c.Set("AuthenticatedUserID", dummyID)
 
 	// run code under test
-	New(nil, nil, nil, nil, mockDeleter, nil).DeleteUser()(c)
+	New(nil, nil, nil, nil, nil, nil, mockDeleter, nil).DeleteUser()(c)
 
 	// assertions
 	var resp struct {

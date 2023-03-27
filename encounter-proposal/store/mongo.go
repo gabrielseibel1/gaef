@@ -3,11 +3,11 @@ package store
 import (
 	"context"
 	"errors"
+	"github.com/gabrielseibel1/gaef/types"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo/options"
 
-	"github.com/gabrielseibel1/gaef/encounter-proposal/domain"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -21,74 +21,74 @@ func New(collection *mongo.Collection) Mongo {
 	}
 }
 
-func (m Mongo) Create(ctx context.Context, ep domain.EncounterProposal) (domain.EncounterProposal, error) {
+func (m Mongo) Create(ctx context.Context, ep types.EncounterProposal) (types.EncounterProposal, error) {
 	ep.ID = ""
 	result, err := m.collection.InsertOne(ctx, ep)
 	if err != nil {
-		return domain.EncounterProposal{}, err
+		return types.EncounterProposal{}, err
 	}
 	ep.ID = result.InsertedID.(primitive.ObjectID).Hex()
 	return ep, nil
 }
 
-func (m Mongo) ReadPaged(ctx context.Context, page int) ([]domain.EncounterProposal, error) {
+func (m Mongo) ReadPaged(ctx context.Context, page int) ([]types.EncounterProposal, error) {
 	opts := options.Find().SetSort(bson.M{"_id": 1}).SetSkip(int64(page * pageSize))
 	cursor, err := m.collection.Find(ctx, bson.M{}, opts)
 	if err != nil {
 		return nil, err
 	}
 
-	var eps []domain.EncounterProposal
+	var eps []types.EncounterProposal
 	if err := cursor.All(ctx, &eps); err != nil {
 		return nil, err
 	}
 	return eps, nil
 }
 
-func (m Mongo) ReadByID(ctx context.Context, id string) (domain.EncounterProposal, error) {
+func (m Mongo) ReadByID(ctx context.Context, id string) (types.EncounterProposal, error) {
 	hex, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
-		return domain.EncounterProposal{}, err
+		return types.EncounterProposal{}, err
 	}
 
 	result := m.collection.FindOne(ctx, bson.M{"_id": hex})
 	if result.Err() != nil {
-		return domain.EncounterProposal{}, result.Err()
+		return types.EncounterProposal{}, result.Err()
 	}
 
-	var ep domain.EncounterProposal
+	var ep types.EncounterProposal
 	if err = result.Decode(&ep); err != nil {
-		return domain.EncounterProposal{}, err
+		return types.EncounterProposal{}, err
 	}
 	return ep, nil
 }
 
-func (m Mongo) ReadByGroupIDs(ctx context.Context, groupIDs []string) ([]domain.EncounterProposal, error) {
+func (m Mongo) ReadByGroupIDs(ctx context.Context, groupIDs []string) ([]types.EncounterProposal, error) {
 	cursor, err := m.collection.Find(ctx, bson.M{"creator.id": bson.M{"$in": bson.A{groupIDs}}})
 	if err != nil {
 		return nil, err
 	}
 
-	var eps []domain.EncounterProposal
+	var eps []types.EncounterProposal
 	if err := cursor.All(ctx, &eps); err != nil {
 		return nil, err
 	}
 	return eps, nil
 }
 
-func (m Mongo) Update(ctx context.Context, ep domain.EncounterProposal) (domain.EncounterProposal, error) {
+func (m Mongo) Update(ctx context.Context, ep types.EncounterProposal) (types.EncounterProposal, error) {
 	hex, err := primitive.ObjectIDFromHex(ep.ID)
 	if err != nil {
-		return domain.EncounterProposal{}, err
+		return types.EncounterProposal{}, err
 	}
 
 	ep.ID = ""
 	result, err := m.collection.UpdateOne(ctx, bson.M{"_id": hex}, bson.M{"$set": ep})
 	if err != nil {
-		return domain.EncounterProposal{}, err
+		return types.EncounterProposal{}, err
 	}
 	if result.ModifiedCount != 1 {
-		return domain.EncounterProposal{}, errors.New("no such encounter proposal")
+		return types.EncounterProposal{}, errors.New("no such encounter proposal")
 	}
 
 	ep.ID = hex.Hex()
@@ -112,7 +112,7 @@ func (m Mongo) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
-func (m Mongo) Append(ctx context.Context, epID string, app domain.Application) error {
+func (m Mongo) Append(ctx context.Context, epID string, app types.Application) error {
 	hex, err := primitive.ObjectIDFromHex(epID)
 	if err != nil {
 		return err

@@ -5,7 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	clientDomain "github.com/gabrielseibel1/gaef/client/domain"
+	"github.com/gabrielseibel1/gaef/types"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -13,7 +13,6 @@ import (
 	"testing"
 
 	"github.com/gabrielseibel1/gaef/encounter-proposal/api"
-	"github.com/gabrielseibel1/gaef/encounter-proposal/domain"
 	"github.com/gin-gonic/gin"
 )
 
@@ -35,8 +34,8 @@ func TestAPI_EPCreatorGroupLeaderCheckerMiddleware_OK(t *testing.T) {
 		err:      nil,
 	}
 	mockReader := mockByIDEPReader{
-		ep: domain.EncounterProposal{
-			Creator: domain.Group{ID: "dummy-group-id"},
+		ep: types.EncounterProposal{
+			Creator: types.Group{ID: "dummy-group-id"},
 			Name:    "mock",
 		},
 		err: nil,
@@ -102,8 +101,8 @@ func TestAPI_EPCreatorGroupLeaderCheckerMiddleware_ReaderError(t *testing.T) {
 		err:      nil,
 	}
 	mockReader := mockByIDEPReader{
-		ep: domain.EncounterProposal{
-			Creator: domain.Group{ID: "dummy-group-id"},
+		ep: types.EncounterProposal{
+			Creator: types.Group{ID: "dummy-group-id"},
 			Name:    "mock",
 		},
 		err: errors.New("mock reader error"),
@@ -176,8 +175,8 @@ func TestAPI_EPCreatorGroupLeaderCheckerMiddleware_LeaderError(t *testing.T) {
 		err:      errors.New("mock leader error"),
 	}
 	mockReader := mockByIDEPReader{
-		ep: domain.EncounterProposal{
-			Creator: domain.Group{ID: "dummy-group-id"},
+		ep: types.EncounterProposal{
+			Creator: types.Group{ID: "dummy-group-id"},
 			Name:    "mock",
 		},
 		err: nil,
@@ -250,8 +249,8 @@ func TestAPI_EPCreatorGroupLeaderCheckerMiddleware_LeaderFalse(t *testing.T) {
 		err:      nil,
 	}
 	mockReader := mockByIDEPReader{
-		ep: domain.EncounterProposal{
-			Creator: domain.Group{ID: "dummy-group-id"},
+		ep: types.EncounterProposal{
+			Creator: types.Group{ID: "dummy-group-id"},
 			Name:    "mock",
 		},
 		err: nil,
@@ -310,7 +309,7 @@ func TestAPI_EPCreationHandler_OK(t *testing.T) {
 	// prepare test setup
 
 	// setup request
-	dummyEP := domain.EncounterProposal{
+	dummyEP := types.EncounterProposal{
 		Name: "dummy",
 	}
 	epJSON, err := json.Marshal(dummyEP)
@@ -325,7 +324,7 @@ func TestAPI_EPCreationHandler_OK(t *testing.T) {
 	c.Request = req
 	// setup mocks
 	mockCreator := mockEPCreator{
-		returnEP: domain.EncounterProposal{
+		returnEP: types.EncounterProposal{
 			Name: "mock",
 		},
 		err: nil,
@@ -349,7 +348,7 @@ func TestAPI_EPCreationHandler_OK(t *testing.T) {
 
 	// verify response body
 	var resp struct {
-		EncounterProposal domain.EncounterProposal
+		EncounterProposal types.EncounterProposal
 	}
 	if err := json.NewDecoder(w.Result().Body).Decode(&resp); err != nil {
 		t.Fatalf("unable to decode response body to json")
@@ -380,7 +379,7 @@ func TestAPI_EPCreationHandler_BadRequest(t *testing.T) {
 	c.Request = req
 	// setup mocks
 	mockCreator := mockEPCreator{
-		returnEP: domain.EncounterProposal{
+		returnEP: types.EncounterProposal{
 			Name: "mock",
 		},
 		err: nil,
@@ -422,7 +421,7 @@ func TestAPI_EPCreationHandler_CreatorError(t *testing.T) {
 	// prepare test setup
 
 	// setup request
-	dummyEP := domain.EncounterProposal{
+	dummyEP := types.EncounterProposal{
 		Name: "dummy",
 	}
 	epJSON, err := json.Marshal(dummyEP)
@@ -437,7 +436,7 @@ func TestAPI_EPCreationHandler_CreatorError(t *testing.T) {
 	c.Request = req
 	// setup mocks
 	mockCreator := mockEPCreator{
-		returnEP: domain.EncounterProposal{
+		returnEP: types.EncounterProposal{
 			Name: "mock",
 		},
 		err: errors.New("mock EP creator error"),
@@ -493,7 +492,7 @@ func TestAPI_EPReadingAllHandler_OK(t *testing.T) {
 	c.AddParam("page", "42")
 	// setup mocks
 	mockReader := mockPagedEPsReader{
-		eps: []domain.EncounterProposal{{Name: "test1"}, {Name: "test2"}},
+		eps: []types.EncounterProposal{{Name: "test1"}, {Name: "test2"}},
 		err: nil,
 	}
 
@@ -515,7 +514,7 @@ func TestAPI_EPReadingAllHandler_OK(t *testing.T) {
 
 	// verify response body
 	var resp struct {
-		EncounterProposals []domain.EncounterProposal
+		EncounterProposals []types.EncounterProposal
 	}
 	if err := json.NewDecoder(w.Result().Body).Decode(&resp); err != nil {
 		t.Fatalf("unable to decode response body to json")
@@ -547,7 +546,7 @@ func TestAPI_EPReadingAllHandler_BadRequest(t *testing.T) {
 	c.AddParam("page", "not a number")
 	// setup mocks
 	mockReader := mockPagedEPsReader{
-		eps: []domain.EncounterProposal{{Name: "test1"}, {Name: "test2"}},
+		eps: []types.EncounterProposal{{Name: "test1"}, {Name: "test2"}},
 		err: nil,
 	}
 
@@ -594,7 +593,7 @@ func TestAPI_EPReadingAllHandler_ReaderError(t *testing.T) {
 	c.AddParam("page", "42")
 	// setup mocks
 	mockReader := mockPagedEPsReader{
-		eps: []domain.EncounterProposal{{Name: "test1"}, {Name: "test2"}},
+		eps: []types.EncounterProposal{{Name: "test1"}, {Name: "test2"}},
 		err: errors.New("mock reader error"),
 	}
 
@@ -649,11 +648,11 @@ func TestAPI_EPReadingByUserHandler_OK(t *testing.T) {
 	c.Set("token", dummyToken)
 	// setup mocks
 	mockReader := mockByGroupIDsReader{
-		eps: []domain.EncounterProposal{{Name: "test1"}, {Name: "test2"}},
+		eps: []types.EncounterProposal{{Name: "test1"}, {Name: "test2"}},
 		err: nil,
 	}
 	mockLister := mockGroupLister{
-		groups: []clientDomain.Group{{ID: "group-id-1"}, {ID: "group-id-2"}},
+		groups: []types.Group{{ID: "group-id-1"}, {ID: "group-id-2"}},
 		err:    nil,
 	}
 
@@ -675,7 +674,7 @@ func TestAPI_EPReadingByUserHandler_OK(t *testing.T) {
 
 	// verify response body
 	var resp struct {
-		EncounterProposals []domain.EncounterProposal
+		EncounterProposals []types.EncounterProposal
 	}
 	if err := json.NewDecoder(w.Result().Body).Decode(&resp); err != nil {
 		t.Fatalf("unable to decode response body to json")
@@ -714,11 +713,11 @@ func TestAPI_EPReadingByUserHandler_ListerError(t *testing.T) {
 	c.Set("token", dummyToken)
 	// setup mocks
 	mockLister := mockGroupLister{
-		groups: []clientDomain.Group{{ID: "group-id-1"}, {ID: "group-id-2"}},
+		groups: []types.Group{{ID: "group-id-1"}, {ID: "group-id-2"}},
 		err:    errors.New("mock lister error"),
 	}
 	mockReader := mockByGroupIDsReader{
-		eps: []domain.EncounterProposal{{Name: "test1"}, {Name: "test2"}},
+		eps: []types.EncounterProposal{{Name: "test1"}, {Name: "test2"}},
 		err: nil,
 	}
 
@@ -779,11 +778,11 @@ func TestAPI_EPReadingByUserHandler_ReaderError(t *testing.T) {
 	c.Set("token", dummyToken)
 	// setup mocks
 	mockLister := mockGroupLister{
-		groups: []clientDomain.Group{{ID: "group-id-1"}, {ID: "group-id-2"}},
+		groups: []types.Group{{ID: "group-id-1"}, {ID: "group-id-2"}},
 		err:    nil,
 	}
 	mockReader := mockByGroupIDsReader{
-		eps: []domain.EncounterProposal{{Name: "test1"}, {Name: "test2"}},
+		eps: []types.EncounterProposal{{Name: "test1"}, {Name: "test2"}},
 		err: errors.New("mock reader error"),
 	}
 
@@ -844,7 +843,7 @@ func TestAPI_EPReadingByIDHandler_OK(t *testing.T) {
 	c.AddParam("epid", dummyID)
 	// setup mocks
 	mockReader := mockByIDEPReader{
-		ep: domain.EncounterProposal{
+		ep: types.EncounterProposal{
 			Name: "mock",
 		},
 		err: nil,
@@ -868,7 +867,7 @@ func TestAPI_EPReadingByIDHandler_OK(t *testing.T) {
 
 	// verify response body
 	var resp struct {
-		EncounterProposal domain.EncounterProposal
+		EncounterProposal types.EncounterProposal
 	}
 	if err := json.NewDecoder(w.Result().Body).Decode(&resp); err != nil {
 		t.Fatalf("unable to decode response body to json")
@@ -901,7 +900,7 @@ func TestAPI_EPReadingByIDHandler_ReaderError(t *testing.T) {
 	c.AddParam("epid", dummyID)
 	// setup mocks
 	mockReader := mockByIDEPReader{
-		ep: domain.EncounterProposal{
+		ep: types.EncounterProposal{
 			Name: "mock",
 		},
 		err: errors.New("mock reader error"),
@@ -951,7 +950,7 @@ func TestAPI_EPUpdateHandler_OK(t *testing.T) {
 
 	// setup request
 	dummyEPID := "dummy-ep-id"
-	dummyEP := domain.EncounterProposal{
+	dummyEP := types.EncounterProposal{
 		ID:   dummyEPID,
 		Name: "dummy",
 	}
@@ -968,7 +967,7 @@ func TestAPI_EPUpdateHandler_OK(t *testing.T) {
 	c.AddParam("epid", dummyEPID)
 	// setup mocks
 	mockUpdater := mockEPUpdater{
-		returnEP: domain.EncounterProposal{
+		returnEP: types.EncounterProposal{
 			Name: "mock",
 		},
 		err: nil,
@@ -992,7 +991,7 @@ func TestAPI_EPUpdateHandler_OK(t *testing.T) {
 
 	// verify response body
 	var resp struct {
-		EncounterProposal domain.EncounterProposal
+		EncounterProposal types.EncounterProposal
 	}
 	if err := json.NewDecoder(w.Result().Body).Decode(&resp); err != nil {
 		t.Fatalf("unable to decode response body to json")
@@ -1025,7 +1024,7 @@ func TestAPI_EPUpdateHandler_BadRequest(t *testing.T) {
 	c.AddParam("epid", dummyEPID)
 	// setup mocks
 	mockUpdater := mockEPUpdater{
-		returnEP: domain.EncounterProposal{
+		returnEP: types.EncounterProposal{
 			Name: "mock",
 		},
 		err: nil,
@@ -1075,7 +1074,7 @@ func TestAPI_EPUpdateHandler_MismatchingID(t *testing.T) {
 
 	// setup request
 	dummyEPID := "dummy-ep-id"
-	dummyEP := domain.EncounterProposal{
+	dummyEP := types.EncounterProposal{
 		ID:   dummyEPID,
 		Name: "dummy",
 	}
@@ -1092,7 +1091,7 @@ func TestAPI_EPUpdateHandler_MismatchingID(t *testing.T) {
 	c.AddParam("epid", "mismatching-id")
 	// setup mocks
 	mockUpdater := mockEPUpdater{
-		returnEP: domain.EncounterProposal{
+		returnEP: types.EncounterProposal{
 			Name: "mock",
 		},
 		err: nil,
@@ -1142,7 +1141,7 @@ func TestAPI_EPUpdateHandler_UpdaterError(t *testing.T) {
 
 	// setup request
 	dummyEPID := "dummy-ep-id"
-	dummyEP := domain.EncounterProposal{
+	dummyEP := types.EncounterProposal{
 		ID:   dummyEPID,
 		Name: "dummy",
 	}
@@ -1159,7 +1158,7 @@ func TestAPI_EPUpdateHandler_UpdaterError(t *testing.T) {
 	c.AddParam("epid", dummyEPID)
 	// setup mocks
 	mockUpdater := mockEPUpdater{
-		returnEP: domain.EncounterProposal{
+		returnEP: types.EncounterProposal{
 			Name: "mock",
 		},
 		err: errors.New("mock updater error"),
@@ -1313,8 +1312,8 @@ func TestAPI_AppCreationHandler_OK(t *testing.T) {
 
 	// setup request
 	dummyGroupID := "dummy-group-id"
-	dummyApp := domain.Application{
-		Creator: domain.Group{ID: dummyGroupID},
+	dummyApp := types.Application{
+		Creator: types.Group{ID: dummyGroupID},
 	}
 	epJSON, err := json.Marshal(dummyApp)
 	if err != nil {
@@ -1332,7 +1331,7 @@ func TestAPI_AppCreationHandler_OK(t *testing.T) {
 	c.AddParam("epid", dummyEPID)
 	// setup mocks
 	mockAppender := mockAppAppender{
-		ep: domain.EncounterProposal{
+		ep: types.EncounterProposal{
 			Name: "mock appender proposal",
 		},
 		err: nil,
@@ -1388,7 +1387,7 @@ func TestAPI_AppCreationHandler_OK(t *testing.T) {
 	if got, want := mockAppender.epID, dummyEPID; got != want {
 		t.Fatalf("got %v, want %v", got, want)
 	}
-	if got, want := mockAppender.app, dummyApp; got != want {
+	if got, want := mockAppender.app, dummyApp; !reflect.DeepEqual(got, want) {
 		t.Fatalf("got %v, want %v", got, want)
 	}
 }
@@ -1407,7 +1406,7 @@ func TestAPI_AppCreationHandler_BadRequest(t *testing.T) {
 	c.AddParam("epid", dummyEPID)
 	// setup mocks
 	mockAppender := mockAppAppender{
-		ep: domain.EncounterProposal{
+		ep: types.EncounterProposal{
 			Name: "mock appender proposal",
 		},
 		err: nil,
@@ -1463,7 +1462,7 @@ func TestAPI_AppCreationHandler_BadRequest(t *testing.T) {
 	if got, want := mockAppender.epID, ""; got != want {
 		t.Fatalf("got %v, want %v", got, want)
 	}
-	if got, want := mockAppender.app, emptyApp; got != want {
+	if got, want := mockAppender.app, emptyApp; !reflect.DeepEqual(got, want) {
 		t.Fatalf("got %v, want %v", got, want)
 	}
 }
@@ -1473,8 +1472,8 @@ func TestAPI_AppCreationHandler_LeaderCheckerFalse(t *testing.T) {
 
 	// setup request
 	dummyGroupID := "dummy-group-id"
-	dummyApp := domain.Application{
-		Creator: domain.Group{ID: dummyGroupID},
+	dummyApp := types.Application{
+		Creator: types.Group{ID: dummyGroupID},
 	}
 	epJSON, err := json.Marshal(dummyApp)
 	if err != nil {
@@ -1492,7 +1491,7 @@ func TestAPI_AppCreationHandler_LeaderCheckerFalse(t *testing.T) {
 	c.AddParam("epid", dummyEPID)
 	// setup mocks
 	mockAppender := mockAppAppender{
-		ep: domain.EncounterProposal{
+		ep: types.EncounterProposal{
 			Name: "mock appender proposal",
 		},
 		err: nil,
@@ -1548,7 +1547,7 @@ func TestAPI_AppCreationHandler_LeaderCheckerFalse(t *testing.T) {
 	if got, want := mockAppender.epID, ""; got != want {
 		t.Fatalf("got %v, want %v", got, want)
 	}
-	if got, want := mockAppender.app, emptyApp; got != want {
+	if got, want := mockAppender.app, emptyApp; !reflect.DeepEqual(got, want) {
 		t.Fatalf("got %v, want %v", got, want)
 	}
 }
@@ -1558,8 +1557,8 @@ func TestAPI_AppCreationHandler_LeaderCheckerError(t *testing.T) {
 
 	// setup request
 	dummyGroupID := "dummy-group-id"
-	dummyApp := domain.Application{
-		Creator: domain.Group{ID: dummyGroupID},
+	dummyApp := types.Application{
+		Creator: types.Group{ID: dummyGroupID},
 	}
 	epJSON, err := json.Marshal(dummyApp)
 	if err != nil {
@@ -1577,7 +1576,7 @@ func TestAPI_AppCreationHandler_LeaderCheckerError(t *testing.T) {
 	c.AddParam("epid", dummyEPID)
 	// setup mocks
 	mockAppender := mockAppAppender{
-		ep: domain.EncounterProposal{
+		ep: types.EncounterProposal{
 			Name: "mock appender proposal",
 		},
 		err: nil,
@@ -1633,7 +1632,7 @@ func TestAPI_AppCreationHandler_LeaderCheckerError(t *testing.T) {
 	if got, want := mockAppender.epID, ""; got != want {
 		t.Fatalf("got %v, want %v", got, want)
 	}
-	if got, want := mockAppender.app, emptyApp; got != want {
+	if got, want := mockAppender.app, emptyApp; !reflect.DeepEqual(got, want) {
 		t.Fatalf("got %v, want %v", got, want)
 	}
 }
@@ -1643,8 +1642,8 @@ func TestAPI_AppCreationHandler_AppenderError(t *testing.T) {
 
 	// setup request
 	dummyGroupID := "dummy-group-id"
-	dummyApp := domain.Application{
-		Creator: domain.Group{ID: dummyGroupID},
+	dummyApp := types.Application{
+		Creator: types.Group{ID: dummyGroupID},
 	}
 	epJSON, err := json.Marshal(dummyApp)
 	if err != nil {
@@ -1662,7 +1661,7 @@ func TestAPI_AppCreationHandler_AppenderError(t *testing.T) {
 	c.AddParam("epid", dummyEPID)
 	// setup mocks
 	mockAppender := mockAppAppender{
-		ep: domain.EncounterProposal{
+		ep: types.EncounterProposal{
 			Name: "mock appender proposal",
 		},
 		err: errors.New("mock appender error"),
@@ -1718,7 +1717,7 @@ func TestAPI_AppCreationHandler_AppenderError(t *testing.T) {
 	if got, want := mockAppender.epID, dummyEPID; got != want {
 		t.Fatalf("got %v, want %v", got, want)
 	}
-	if got, want := mockAppender.app, dummyApp; got != want {
+	if got, want := mockAppender.app, dummyApp; !reflect.DeepEqual(got, want) {
 		t.Fatalf("got %v, want %v", got, want)
 	}
 }
@@ -1744,14 +1743,14 @@ func (m *mockGroupLeaderChecker) IsGroupLeader(ctx context.Context, token string
 type mockEPCreator struct {
 	// receive
 	ctx       context.Context
-	receiveEP domain.EncounterProposal
+	receiveEP types.EncounterProposal
 
 	// return
-	returnEP domain.EncounterProposal
+	returnEP types.EncounterProposal
 	err      error
 }
 
-func (m *mockEPCreator) Create(ctx context.Context, ep domain.EncounterProposal) (domain.EncounterProposal, error) {
+func (m *mockEPCreator) Create(ctx context.Context, ep types.EncounterProposal) (types.EncounterProposal, error) {
 	m.ctx = ctx
 	m.receiveEP = ep
 	return m.returnEP, m.err
@@ -1763,11 +1762,11 @@ type mockPagedEPsReader struct {
 	page int
 
 	// return
-	eps []domain.EncounterProposal
+	eps []types.EncounterProposal
 	err error
 }
 
-func (m *mockPagedEPsReader) ReadPaged(ctx context.Context, page int) ([]domain.EncounterProposal, error) {
+func (m *mockPagedEPsReader) ReadPaged(ctx context.Context, page int) ([]types.EncounterProposal, error) {
 	m.ctx = ctx
 	m.page = page
 	return m.eps, m.err
@@ -1779,11 +1778,11 @@ type mockByGroupIDsReader struct {
 	groupIDs []string
 
 	// return
-	eps []domain.EncounterProposal
+	eps []types.EncounterProposal
 	err error
 }
 
-func (m *mockByGroupIDsReader) ReadByGroupIDs(ctx context.Context, groupIDs []string) ([]domain.EncounterProposal, error) {
+func (m *mockByGroupIDsReader) ReadByGroupIDs(ctx context.Context, groupIDs []string) ([]types.EncounterProposal, error) {
 	m.ctx = ctx
 	m.groupIDs = groupIDs
 	return m.eps, m.err
@@ -1795,11 +1794,11 @@ type mockGroupLister struct {
 	token string
 
 	// return
-	groups []clientDomain.Group
+	groups []types.Group
 	err    error
 }
 
-func (m *mockGroupLister) LeadingGroups(ctx context.Context, token string) ([]clientDomain.Group, error) {
+func (m *mockGroupLister) LeadingGroups(ctx context.Context, token string) ([]types.Group, error) {
 	m.ctx = ctx
 	m.token = token
 	return m.groups, m.err
@@ -1811,11 +1810,11 @@ type mockByIDEPReader struct {
 	id  string
 
 	// return
-	ep  domain.EncounterProposal
+	ep  types.EncounterProposal
 	err error
 }
 
-func (m *mockByIDEPReader) ReadByID(ctx context.Context, id string) (domain.EncounterProposal, error) {
+func (m *mockByIDEPReader) ReadByID(ctx context.Context, id string) (types.EncounterProposal, error) {
 	m.ctx = ctx
 	m.id = id
 	return m.ep, m.err
@@ -1824,14 +1823,14 @@ func (m *mockByIDEPReader) ReadByID(ctx context.Context, id string) (domain.Enco
 type mockEPUpdater struct {
 	// receive
 	ctx       context.Context
-	receiveEP domain.EncounterProposal
+	receiveEP types.EncounterProposal
 
 	// return
-	returnEP domain.EncounterProposal
+	returnEP types.EncounterProposal
 	err      error
 }
 
-func (m *mockEPUpdater) Update(ctx context.Context, ep domain.EncounterProposal) (domain.EncounterProposal, error) {
+func (m *mockEPUpdater) Update(ctx context.Context, ep types.EncounterProposal) (types.EncounterProposal, error) {
 	m.ctx = ctx
 	m.receiveEP = ep
 	return m.returnEP, m.err
@@ -1856,14 +1855,14 @@ type mockAppAppender struct {
 	// receive
 	ctx  context.Context
 	epID string
-	app  domain.Application
+	app  types.Application
 
 	// return
-	ep  domain.EncounterProposal
+	ep  types.EncounterProposal
 	err error
 }
 
-func (m *mockAppAppender) Append(ctx context.Context, epID string, app domain.Application) error {
+func (m *mockAppAppender) Append(ctx context.Context, epID string, app types.Application) error {
 	m.ctx = ctx
 	m.epID = epID
 	m.app = app
@@ -1871,8 +1870,8 @@ func (m *mockAppAppender) Append(ctx context.Context, epID string, app domain.Ap
 }
 
 var (
-	nilStringSlice []string                 = nil
-	emptyEP        domain.EncounterProposal = domain.EncounterProposal{}
-	emptyApp       domain.Application       = domain.Application{}
-	nilCtx         context.Context          = nil
+	emptyEP                        = types.EncounterProposal{}
+	emptyApp                       = types.Application{}
+	nilStringSlice []string        = nil
+	nilCtx         context.Context = nil
 )

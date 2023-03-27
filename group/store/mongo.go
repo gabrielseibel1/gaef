@@ -3,7 +3,7 @@ package store
 import (
 	"context"
 	"errors"
-	"github.com/gabrielseibel1/gaef/group/domain"
+	"github.com/gabrielseibel1/gaef/types"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -34,18 +34,18 @@ func (s MongoStore) IsLeader(ctx context.Context, userID string, groupID string)
 	return false, nil
 }
 
-func (s MongoStore) CreateGroup(ctx context.Context, group domain.Group) (domain.Group, error) {
+func (s MongoStore) CreateGroup(ctx context.Context, group types.Group) (types.Group, error) {
 	group.ID = ""
 	res, err := s.collection.InsertOne(ctx, group)
 	if err != nil {
-		return domain.Group{}, err
+		return types.Group{}, err
 	}
 	id := res.InsertedID.(primitive.ObjectID).Hex()
 	group.ID = id
 	return group, nil
 }
 
-func (s MongoStore) ReadParticipatingGroups(ctx context.Context, userID string) ([]domain.Group, error) {
+func (s MongoStore) ReadParticipatingGroups(ctx context.Context, userID string) ([]types.Group, error) {
 	cursor, err := s.collection.Find(ctx, bson.M{
 		"members": bson.M{
 			"$elemMatch": bson.M{
@@ -58,14 +58,14 @@ func (s MongoStore) ReadParticipatingGroups(ctx context.Context, userID string) 
 	}
 	defer cursor.Close(ctx)
 
-	var groups []domain.Group
+	var groups []types.Group
 	if err := cursor.All(ctx, &groups); err != nil {
 		return nil, err
 	}
 	return groups, nil
 }
 
-func (s MongoStore) ReadLeadingGroups(ctx context.Context, userID string) ([]domain.Group, error) {
+func (s MongoStore) ReadLeadingGroups(ctx context.Context, userID string) ([]types.Group, error) {
 	cursor, err := s.collection.Find(ctx, bson.M{
 		"leaders": bson.M{
 			"$elemMatch": bson.M{
@@ -78,44 +78,44 @@ func (s MongoStore) ReadLeadingGroups(ctx context.Context, userID string) ([]dom
 	}
 	defer cursor.Close(ctx)
 
-	var groups []domain.Group
+	var groups []types.Group
 	if err := cursor.All(ctx, &groups); err != nil {
 		return nil, err
 	}
 	return groups, nil
 }
 
-func (s MongoStore) ReadGroup(ctx context.Context, id string) (domain.Group, error) {
+func (s MongoStore) ReadGroup(ctx context.Context, id string) (types.Group, error) {
 	hexID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
-		return domain.Group{}, err
+		return types.Group{}, err
 	}
 
 	res := s.collection.FindOne(ctx, bson.M{"_id": hexID})
 	if res.Err() != nil {
-		return domain.Group{}, res.Err()
+		return types.Group{}, res.Err()
 	}
 
-	var group domain.Group
+	var group types.Group
 	err = res.Decode(&group)
 	if err != nil {
-		return domain.Group{}, err
+		return types.Group{}, err
 	}
 	return group, err
 }
 
-func (s MongoStore) UpdateGroup(ctx context.Context, group domain.Group) (domain.Group, error) {
+func (s MongoStore) UpdateGroup(ctx context.Context, group types.Group) (types.Group, error) {
 	hexID, err := primitive.ObjectIDFromHex(group.ID)
 	if err != nil {
-		return domain.Group{}, err
+		return types.Group{}, err
 	}
 	group.ID = "" // so that mongo doesn't think we are updating the id
 	res, err := s.collection.UpdateOne(ctx, bson.M{"_id": hexID}, bson.M{"$set": group})
 	if err != nil {
-		return domain.Group{}, err
+		return types.Group{}, err
 	}
 	if res.MatchedCount == 0 {
-		return domain.Group{}, errors.New("no such group")
+		return types.Group{}, errors.New("no such group")
 	}
 	group.ID = hexID.Hex()
 	return group, nil

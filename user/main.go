@@ -4,13 +4,12 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"github.com/gabrielseibel1/gaef/user/hasher"
 	"log"
 	"os"
 	"time"
 
-	"github.com/gabrielseibel1/gaef/user/domain"
 	"github.com/gabrielseibel1/gaef/user/handler"
-	"github.com/gabrielseibel1/gaef/user/service"
 	"github.com/gabrielseibel1/gaef/user/store"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -97,9 +96,8 @@ func main() {
 
 	// instantiate and inject dependencies
 	str := store.NewMongoStore(client.Database(dbName).Collection(collectionName))
-	phv := domain.PasswordHasherVerifier{}
-	svc := service.New(phv, phv, str, str, str, str, str)
-	hdl := handler.New(svc, svc, svc, svc, svc, []byte(jwtSecret))
+	phv := hasher.New()
+	hdl := handler.New(phv, phv, str, str, str, str, str, []byte(jwtSecret))
 	gen := handlerGenerator{
 		authHandler:   hdl,
 		signupHandler: hdl,
@@ -126,5 +124,5 @@ func main() {
 			auth.DELETE("/:id", gen.deleteHandler.DeleteUser())
 		}
 	}
-	r.Run(fmt.Sprintf("0.0.0.0:%s", port))
+	log.Fatal(r.Run(fmt.Sprintf("0.0.0.0:%s", port)))
 }

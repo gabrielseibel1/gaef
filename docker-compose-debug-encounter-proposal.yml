@@ -26,7 +26,7 @@ services:
   encounter-proposal-service:
     build:
       context: .
-      dockerfile: encounter-proposal/Dockerfile
+      dockerfile: encounter-proposal/_debug/Dockerfile
     security_opt:
       - "seccomp:unconfined"
     cap_add:

@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/gabrielseibel1/gaef/group/domain"
+	"github.com/gabrielseibel1/gaef/types"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -58,7 +58,7 @@ func (h Handler) OnlyLeadersMiddleware() gin.HandlerFunc {
 
 func (h Handler) CreateGroupHandler() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		var group domain.Group
+		var group types.Group
 		if err := ctx.ShouldBindJSON(&group); err != nil {
 			ctx.JSON(http.StatusBadRequest, ginErrorMessage(err))
 			return
@@ -120,7 +120,7 @@ func (h Handler) UpdateGroupHandler() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		groupID := ctx.Param("id")
 
-		var group domain.Group
+		var group types.Group
 		if err := ctx.ShouldBindJSON(&group); err != nil {
 			ctx.JSON(http.StatusBadRequest, ginErrorMessage(err))
 			return
@@ -160,19 +160,19 @@ type LeaderChecker interface {
 	IsLeader(ctx context.Context, userID string, groupID string) (bool, error)
 }
 type GroupCreator interface {
-	CreateGroup(ctx context.Context, group domain.Group) (domain.Group, error)
+	CreateGroup(ctx context.Context, group types.Group) (types.Group, error)
 }
 type ParticipatingGroupsReader interface {
-	ReadParticipatingGroups(ctx context.Context, userID string) ([]domain.Group, error)
+	ReadParticipatingGroups(ctx context.Context, userID string) ([]types.Group, error)
 }
 type LeadingGroupsReader interface {
-	ReadLeadingGroups(ctx context.Context, userID string) ([]domain.Group, error)
+	ReadLeadingGroups(ctx context.Context, userID string) ([]types.Group, error)
 }
 type GroupReader interface {
-	ReadGroup(ctx context.Context, id string) (domain.Group, error)
+	ReadGroup(ctx context.Context, id string) (types.Group, error)
 }
 type GroupUpdater interface {
-	UpdateGroup(ctx context.Context, group domain.Group) (domain.Group, error)
+	UpdateGroup(ctx context.Context, group types.Group) (types.Group, error)
 }
 type GroupDeleter interface {
 	DeleteGroup(ctx context.Context, id string) error

@@ -4,13 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/gabrielseibel1/gaef/types"
+	"github.com/gin-gonic/gin"
 	"net/http"
 	"strconv"
-
-	"github.com/gabrielseibel1/gaef/encounter-proposal/domain"
-
-	clientDomain "github.com/gabrielseibel1/gaef/client/domain"
-	"github.com/gin-gonic/gin"
 )
 
 var (
@@ -31,28 +28,28 @@ type API struct {
 }
 
 type encounterProposalCreator interface {
-	Create(ctx context.Context, ep domain.EncounterProposal) (domain.EncounterProposal, error)
+	Create(ctx context.Context, ep types.EncounterProposal) (types.EncounterProposal, error)
 }
 type pagedEncounterProposalsReader interface {
-	ReadPaged(ctx context.Context, page int) ([]domain.EncounterProposal, error)
+	ReadPaged(ctx context.Context, page int) ([]types.EncounterProposal, error)
 }
 type byGroupIDsEPsReader interface {
-	ReadByGroupIDs(ctx context.Context, groupIDs []string) ([]domain.EncounterProposal, error)
+	ReadByGroupIDs(ctx context.Context, groupIDs []string) ([]types.EncounterProposal, error)
 }
 type byIDEncounterProposalReader interface {
-	ReadByID(ctx context.Context, id string) (domain.EncounterProposal, error)
+	ReadByID(ctx context.Context, id string) (types.EncounterProposal, error)
 }
 type encounterProposalUpdater interface {
-	Update(ctx context.Context, ep domain.EncounterProposal) (domain.EncounterProposal, error)
+	Update(ctx context.Context, ep types.EncounterProposal) (types.EncounterProposal, error)
 }
 type encounterProposalDeleter interface {
 	Delete(ctx context.Context, id string) error
 }
 type applicationAppender interface {
-	Append(ctx context.Context, epID string, app domain.Application) error
+	Append(ctx context.Context, epID string, app types.Application) error
 }
 type leadingGroupsLister interface {
-	LeadingGroups(ctx context.Context, token string) ([]clientDomain.Group, error)
+	LeadingGroups(ctx context.Context, token string) ([]types.Group, error)
 }
 type groupLeaderChecker interface {
 	IsGroupLeader(ctx context.Context, token string, groupID string) (bool, error)
@@ -105,7 +102,7 @@ func (api API) EPCreatorGroupLeaderCheckerMiddleware() gin.HandlerFunc {
 func (api API) EPCreationHandler() gin.HandlerFunc {
 	return jsonHandler(func(ctx *gin.Context) result {
 
-		var ep domain.EncounterProposal
+		var ep types.EncounterProposal
 		if err := ctx.ShouldBindJSON(&ep); err != nil {
 			return er(http.StatusBadRequest, err)
 		}
@@ -187,7 +184,7 @@ func (api API) EPReadingByIDHandler() gin.HandlerFunc {
 func (api API) EPUpdateHandler() gin.HandlerFunc {
 	return jsonHandler(func(ctx *gin.Context) result {
 
-		var ep domain.EncounterProposal
+		var ep types.EncounterProposal
 		if err := ctx.ShouldBindJSON(&ep); err != nil {
 			return er(http.StatusBadRequest, err)
 		}
@@ -222,7 +219,7 @@ func (api API) EPDeletionHandler() gin.HandlerFunc {
 func (api API) AppCreationHandler() gin.HandlerFunc {
 	return jsonHandler(func(ctx *gin.Context) result {
 
-		var app domain.Application
+		var app types.Application
 		if err := ctx.ShouldBindJSON(&app); err != nil {
 			return er(http.StatusBadRequest, err)
 		}

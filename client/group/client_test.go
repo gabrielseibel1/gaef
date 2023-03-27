@@ -3,9 +3,9 @@ package group_test
 import (
 	"context"
 	"github.com/gabrielseibel1/gaef/client/group"
+	"github.com/gabrielseibel1/gaef/types"
 	"testing"
 
-	"github.com/gabrielseibel1/gaef/client/domain"
 	"github.com/gabrielseibel1/gaef/client/user"
 )
 
@@ -34,11 +34,11 @@ func TestClient_CRUD_Localhost8081(t *testing.T) {
 	if err != nil {
 		t.Fatalf("usersClient.Login = err: %s", err.Error())
 	}
-	g := domain.Group{
+	g := types.Group{
 		Name:        "G",
 		PictureURL:  "example.com",
 		Description: "Gg",
-		Members: []domain.User{
+		Members: []types.User{
 			{
 				ID:   user1ID,
 				Name: "A",
@@ -52,7 +52,7 @@ func TestClient_CRUD_Localhost8081(t *testing.T) {
 				Name: "C",
 			},
 		},
-		Leaders: []domain.User{
+		Leaders: []types.User{
 			{
 				ID:   user1ID,
 				Name: "A",

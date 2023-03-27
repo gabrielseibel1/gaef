@@ -5,7 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/gabrielseibel1/gaef/client/domain"
+	"github.com/gabrielseibel1/gaef/types"
 	"io"
 	"net/http"
 )
@@ -15,7 +15,11 @@ type Client struct {
 }
 
 func (c Client) SignUp(ctx context.Context, name, email, password string) (string, error) {
-	reqBodyBytes, err := json.Marshal(domain.User{Name: name, Email: email, Password: password})
+	reqBodyBytes, err := json.Marshal(types.User{
+		Name:     name,
+		Email:    email,
+		Password: password,
+	})
 	if err != nil {
 		return "", err
 	}
@@ -39,7 +43,10 @@ func (c Client) SignUp(ctx context.Context, name, email, password string) (strin
 }
 
 func (c Client) Login(ctx context.Context, email, password string) (string, error) {
-	reqBodyBytes, err := json.Marshal(domain.User{Email: email, Password: password})
+	reqBodyBytes, err := json.Marshal(types.User{
+		Email:    email,
+		Password: password,
+	})
 	if err != nil {
 		return "", err
 	}
@@ -65,27 +72,27 @@ func (c Client) Login(ctx context.Context, email, password string) (string, erro
 	return respBody.Token, nil
 }
 
-func (c Client) ReadUser(ctx context.Context, token, id string) (domain.User, error) {
+func (c Client) ReadUser(ctx context.Context, token, id string) (types.User, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.URL+id, nil)
 	if err != nil {
-		return domain.User{}, err
+		return types.User{}, err
 	}
 	req.Header.Add("Authorization", "Bearer "+token)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return domain.User{}, err
+		return types.User{}, err
 	}
 	if resp.StatusCode != http.StatusOK {
-		return domain.User{}, fmt.Errorf("read user request returned status code %d", resp.StatusCode)
+		return types.User{}, fmt.Errorf("read user request returned status code %d", resp.StatusCode)
 	}
 
-	var respBody struct{ User domain.User }
+	var respBody struct{ User types.User }
 	err = json.NewDecoder(resp.Body).Decode(&respBody)
 	return respBody.User, err
 }
 
-func (c Client) UpdateUser(ctx context.Context, token string, u domain.User) (domain.User, error) {
+func (c Client) UpdateUser(ctx context.Context, token string, u types.User) (types.User, error) {
 	reqBodyBytes, err := json.Marshal(u)
 	if err != nil {
 		return u, err
@@ -93,7 +100,7 @@ func (c Client) UpdateUser(ctx context.Context, token string, u domain.User) (do
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPut, c.URL+u.ID, io.NopCloser(bytes.NewBuffer(reqBodyBytes)))
 	if err != nil {
-		return domain.User{}, err
+		return types.User{}, err
 	}
 	req.Header.Add("Authorization", "Bearer "+token)
 
@@ -105,7 +112,7 @@ func (c Client) UpdateUser(ctx context.Context, token string, u domain.User) (do
 		return u, fmt.Errorf("update user request returned status code %d", resp.StatusCode)
 	}
 
-	var respBody struct{ User domain.User }
+	var respBody struct{ User types.User }
 	err = json.NewDecoder(resp.Body).Decode(&respBody)
 	return respBody.User, err
 }

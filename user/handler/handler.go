@@ -3,41 +3,49 @@ package handler
 import (
 	"context"
 	"fmt"
+	"github.com/gabrielseibel1/gaef/types"
 	"net/http"
 	"time"
 
-	"github.com/gabrielseibel1/gaef/user/domain"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt"
 )
 
 // dependencies
 
+type PasswordHasher interface {
+	GenerateFromPassword(password string) (string, error)
+}
+type PasswordVerifier interface {
+	CompareHashAndPassword(hashedPassword, password string) error
+}
 type Creator interface {
-	Create(user *domain.User, password string, ctx context.Context) (string, error)
+	Create(ctx context.Context, user types.User) (string, error)
 }
-type Loginer interface {
-	Login(email, password string, ctx context.Context) (*domain.User, error)
+type ByEmailReader interface {
+	ReadSensitiveByEmail(ctx context.Context, email string) (types.User, error)
 }
-type Reader interface {
-	Read(id string, ctx context.Context) (*domain.User, error)
+type ByIDReader interface {
+	ReadByID(ctx context.Context, id string) (types.User, error)
 }
 type Updater interface {
-	Update(user *domain.User, ctx context.Context) (*domain.User, error)
+	Update(ctx context.Context, user types.User) error
 }
 type Deleter interface {
-	Delete(id string, ctx context.Context) error
+	Delete(ctx context.Context, id string) error
 }
 
 // implementation
 
 type Handler struct {
-	creator   Creator
-	loginer   Loginer
-	reader    Reader
-	updater   Updater
-	deleter   Deleter
-	jwtSecret []byte
+	hasher        PasswordHasher
+	verifier      PasswordVerifier
+	creator       Creator
+	byIDReader    ByIDReader
+	byEmailReader ByEmailReader
+	updater       Updater
+	deleter       Deleter
+	jwtSecret     []byte
 }
 
 const jwtTTL = time.Hour * 24 * 7
@@ -49,14 +57,25 @@ var messageErrorInvalidToken = gin.H{"error": "invalid or expired token"}
 var messageErrorUserNotFound = gin.H{"error": "user not found"}
 var messageErrorMissingUserData = gin.H{"error": "missing user data"}
 
-func New(creator Creator, loginer Loginer, reader Reader, updater Updater, deleter Deleter, jwtSecret []byte) *Handler {
+func New(
+	hasher PasswordHasher,
+	verifier PasswordVerifier,
+	creator Creator,
+	byIDReader ByIDReader,
+	byEmailReader ByEmailReader,
+	updater Updater,
+	deleter Deleter,
+	jwtSecret []byte,
+) *Handler {
 	return &Handler{
-		creator:   creator,
-		loginer:   loginer,
-		reader:    reader,
-		updater:   updater,
-		deleter:   deleter,
-		jwtSecret: jwtSecret,
+		hasher:        hasher,
+		verifier:      verifier,
+		creator:       creator,
+		byIDReader:    byIDReader,
+		byEmailReader: byEmailReader,
+		updater:       updater,
+		deleter:       deleter,
+		jwtSecret:     jwtSecret,
 	}
 }
 
@@ -111,15 +130,30 @@ func (sh Handler) Signup() gin.HandlerFunc {
 			ctx.JSON(http.StatusBadRequest, messageErrorMissingUserData)
 			return
 		}
-		user := &domain.User{
-			Email: json.Email,
-			Name:  json.Name,
+		user := types.User{
+			Name:     json.Name,
+			Email:    json.Email,
+			Password: json.Password,
 		}
-		id, err := sh.creator.Create(user, json.Password, ctx)
-		if err != nil {
-			ctx.JSON(http.StatusBadRequest, gin.H{"error": "email is taken"})
+
+		_, err := sh.byEmailReader.ReadSensitiveByEmail(ctx, user.Email)
+		if err == nil {
+			ctx.JSON(http.StatusUnprocessableEntity, gin.H{"error": "email is taken"})
 			return
 		}
+
+		user.HashedPassword, err = sh.hasher.GenerateFromPassword(user.Password)
+		if err != nil {
+			ctx.JSON(http.StatusUnprocessableEntity, gin.H{"error": "bad password"})
+			return
+		}
+
+		id, err := sh.creator.Create(ctx, user)
+		if err != nil {
+			ctx.JSON(http.StatusUnprocessableEntity, gin.H{"error": "email is taken"})
+			return
+		}
+
 		ctx.JSON(http.StatusCreated, gin.H{"id": id})
 	}
 }
@@ -131,20 +165,26 @@ func (sh Handler) Login() gin.HandlerFunc {
 			Password string `json:"password" binding:"required"`
 		}
 		if err := ctx.ShouldBindJSON(&json); err != nil {
-			ctx.JSON(http.StatusBadRequest, messageErrorUnauthorized)
+			ctx.JSON(http.StatusBadRequest, messageErrorMissingUserData)
 			return
 		}
 
-		user, err := sh.loginer.Login(json.Email, json.Password, ctx)
+		u, err := sh.byEmailReader.ReadSensitiveByEmail(ctx, json.Email)
+		if err != nil {
+			ctx.JSON(http.StatusUnauthorized, messageErrorUnauthorized)
+			return
+		}
+
+		err = sh.verifier.CompareHashAndPassword(u.HashedPassword, json.Password)
 		if err != nil {
 			ctx.JSON(http.StatusUnauthorized, messageErrorUnauthorized)
 			return
 		}
 
 		token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-			"name":  user.Name,
-			"email": user.Email,
-			"sub":   user.ID,
+			"name":  u.Name,
+			"email": u.Email,
+			"sub":   u.ID,
 			"exp":   time.Now().Add(jwtTTL).Unix(),
 		})
 		tokenString, err := token.SignedString(sh.jwtSecret)
@@ -167,7 +207,7 @@ func (sh Handler) GetIDFromToken() gin.HandlerFunc {
 func (sh Handler) GetUserFromID() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		id := ctx.GetString(paramKeyAuthenticatedUserID)
-		user, err := sh.reader.Read(id, ctx)
+		user, err := sh.byIDReader.ReadByID(ctx, id)
 		if err != nil {
 			ctx.JSON(http.StatusNotFound, messageErrorUserNotFound)
 			return
@@ -180,24 +220,28 @@ func (sh Handler) UpdateUser() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		id := ctx.GetString(paramKeyAuthenticatedUserID)
 
-		var providedUser domain.User
-		if err := ctx.ShouldBindJSON(&providedUser); err != nil {
+		var json struct {
+			ID   string `json:"id" binding:"required"`
+			Name string `json:"name" binding:"required"`
+		}
+		if err := ctx.ShouldBindJSON(&json); err != nil {
 			ctx.JSON(http.StatusBadRequest, messageErrorMissingUserData)
 			return
 		}
+		user := types.User{ID: json.ID, Name: json.Name}
 
-		if !(id == providedUser.ID) {
+		if !(id == user.ID) {
 			ctx.JSON(http.StatusUnauthorized, messageErrorUnauthorized)
 			return
 		}
 
-		updatedUser, err := sh.updater.Update(&providedUser, ctx)
+		err := sh.updater.Update(ctx, user)
 		if err != nil {
 			ctx.JSON(http.StatusNotFound, messageErrorUserNotFound)
 			return
 		}
 
-		ctx.JSON(http.StatusOK, gin.H{"user": updatedUser})
+		ctx.JSON(http.StatusOK, gin.H{"user": user})
 	}
 }
 
@@ -205,7 +249,7 @@ func (sh Handler) DeleteUser() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		id := ctx.GetString(paramKeyAuthenticatedUserID)
 
-		err := sh.deleter.Delete(id, ctx)
+		err := sh.deleter.Delete(ctx, id)
 		if err != nil {
 			ctx.JSON(http.StatusNotFound, messageErrorUserNotFound)
 			return

@@ -36,7 +36,7 @@ func TestClient_CRUD_Localhost8080(t *testing.T) {
 	// update user
 	u.Name = "B"
 	u.Email = "b@gmail.com"
-	u, err = usersClient.UpdateUser(ctx, token, u)
+	_, err = usersClient.UpdateUser(ctx, token, u)
 	if err != nil {
 		t.Fatalf("usersClient.UpdateUser = err: %s", err.Error())
 	}

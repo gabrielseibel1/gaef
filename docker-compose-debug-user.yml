@@ -29,7 +29,7 @@ services:
   encounter-proposal-service:
     build:
       context: .
-      dockerfile: encounter-proposal/_debug/Dockerfile
+      dockerfile: encounter-proposal/Dockerfile
     ports:
       - "8082:8080"
     environment:

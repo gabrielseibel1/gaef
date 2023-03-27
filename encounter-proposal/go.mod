@@ -2,10 +2,7 @@ module github.com/gabrielseibel1/gaef/encounter-proposal
 
 go 1.19
 
-require (
-	github.com/gabrielseibel1/gaef/auth v0.0.0-20230316144111-02b70a9f786b
-	github.com/gin-gonic/gin v1.9.0
-)
+require github.com/gin-gonic/gin v1.9.0
 
 require (
 	github.com/golang/snappy v0.0.1 // indirect
