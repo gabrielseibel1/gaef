@@ -11,7 +11,6 @@ import (
 )
 
 type Handler struct {
-	authenticator             Authenticator
 	leaderChecker             LeaderChecker
 	groupCreator              GroupCreator
 	participatingGroupsReader ParticipatingGroupsReader
@@ -66,7 +65,7 @@ func (h Handler) CreateGroupHandler() gin.HandlerFunc {
 
 		group, err := h.groupCreator.CreateGroup(ctx, group)
 		if err != nil {
-			ctx.JSON(http.StatusBadRequest, ginErrorMessage(err))
+			ctx.JSON(http.StatusUnprocessableEntity, ginErrorMessage(err))
 			return
 		}
 
@@ -126,7 +125,7 @@ func (h Handler) UpdateGroupHandler() gin.HandlerFunc {
 			return
 		}
 		if groupID != group.ID {
-			ctx.JSON(http.StatusBadRequest, ginErrorMessage(errors.New("group id cannot be updated")))
+			ctx.JSON(http.StatusUnprocessableEntity, ginErrorMessage(errors.New("group id cannot be updated")))
 			return
 		}
 
@@ -153,9 +152,6 @@ func (h Handler) DeleteGroupHandler() gin.HandlerFunc {
 	}
 }
 
-type Authenticator interface {
-	Authenticate(ctx context.Context, token string) (string, error)
-}
 type LeaderChecker interface {
 	IsLeader(ctx context.Context, userID string, groupID string) (bool, error)
 }
