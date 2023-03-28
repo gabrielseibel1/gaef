@@ -23,6 +23,8 @@ func New(collection *mongo.Collection) Mongo {
 
 func (m Mongo) Create(ctx context.Context, ep types.EncounterProposal) (types.EncounterProposal, error) {
 	ep.ID = ""
+	// create with a non-nil slice of len 0 to be pushable
+	ep.Applications = []types.Application{}
 	result, err := m.collection.InsertOne(ctx, ep)
 	if err != nil {
 		return types.EncounterProposal{}, err
@@ -64,7 +66,11 @@ func (m Mongo) ReadByID(ctx context.Context, id string) (types.EncounterProposal
 }
 
 func (m Mongo) ReadByGroupIDs(ctx context.Context, groupIDs []string) ([]types.EncounterProposal, error) {
-	cursor, err := m.collection.Find(ctx, bson.M{"creator.id": bson.M{"$in": bson.A{groupIDs}}})
+	var ids bson.A
+	for _, gid := range groupIDs {
+		ids = append(ids, gid)
+	}
+	cursor, err := m.collection.Find(ctx, bson.M{"creator._id": bson.M{"$in": ids}})
 	if err != nil {
 		return nil, err
 	}

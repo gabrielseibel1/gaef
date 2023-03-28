@@ -117,12 +117,12 @@ func main() {
 
 		byEPID := root.Group("/:" + api.EPID)
 		{
-			byEPID.GET("/", hg.epReadingByIDHandlerGenerator.EPReadingByIDHandler())
+			byEPID.GET("", hg.epReadingByIDHandlerGenerator.EPReadingByIDHandler())
 
-			creatorsOnly := byEPID.Group("/", hg.epCreatorGroupLeaderCheckerMiddlewareGenerator.EPCreatorGroupLeaderCheckerMiddleware())
+			creatorsOnly := byEPID.Group("", hg.epCreatorGroupLeaderCheckerMiddlewareGenerator.EPCreatorGroupLeaderCheckerMiddleware())
 			{
-				creatorsOnly.PUT("/", hg.epUpdateHandlerGenerator.EPUpdateHandler())
-				creatorsOnly.DELETE("/", hg.epDeletionHandlerGenerator.EPDeletionHandler())
+				creatorsOnly.PUT("", hg.epUpdateHandlerGenerator.EPUpdateHandler())
+				creatorsOnly.DELETE("", hg.epDeletionHandlerGenerator.EPDeletionHandler())
 			}
 
 			byEPID.POST("/applications", hg.appCreationHandlerGenerator.AppCreationHandler())

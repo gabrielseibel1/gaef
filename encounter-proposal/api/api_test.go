@@ -310,7 +310,8 @@ func TestAPI_EPCreationHandler_OK(t *testing.T) {
 
 	// setup request
 	dummyEP := types.EncounterProposal{
-		Name: "dummy",
+		Name:         "dummy",
+		Applications: []types.Application{},
 	}
 	epJSON, err := json.Marshal(dummyEP)
 	if err != nil {
@@ -322,10 +323,17 @@ func TestAPI_EPCreationHandler_OK(t *testing.T) {
 		Body: io.NopCloser(bytes.NewBuffer(epJSON)),
 	}
 	c.Request = req
+	dummyToken := "dummy-token"
+	c.Set("token", dummyToken)
 	// setup mocks
+	mockLeaderChecker := mockGroupLeaderChecker{
+		isLeader: true,
+		err:      nil,
+	}
 	mockCreator := mockEPCreator{
 		returnEP: types.EncounterProposal{
-			Name: "mock",
+			ID:   "mock-id",
+			Name: "mock-name",
 		},
 		err: nil,
 	}
@@ -341,19 +349,19 @@ func TestAPI_EPCreationHandler_OK(t *testing.T) {
 		nil,
 		nil,
 		nil,
-		nil,
+		&mockLeaderChecker,
 	).EPCreationHandler()(c)
 
 	// assertions
 
 	// verify response body
 	var resp struct {
-		EncounterProposal types.EncounterProposal
+		ID string
 	}
 	if err := json.NewDecoder(w.Result().Body).Decode(&resp); err != nil {
 		t.Fatalf("unable to decode response body to json")
 	}
-	if got, want := resp.EncounterProposal, mockCreator.returnEP; !reflect.DeepEqual(got, want) {
+	if got, want := resp.ID, mockCreator.returnEP.ID; got != want {
 		t.Fatalf("got %v, want %v", got, want)
 	}
 	// verify response status code
@@ -361,6 +369,15 @@ func TestAPI_EPCreationHandler_OK(t *testing.T) {
 		t.Fatalf("got %v, want %v", got, want)
 	}
 	// verify mocks received values
+	if got, want := mockLeaderChecker.ctx, c; got != want {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+	if got, want := mockLeaderChecker.groupID, dummyEP.ID; got != want {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+	if got, want := mockLeaderChecker.token, dummyToken; got != want {
+		t.Fatalf("got %v, want %v", got, want)
+	}
 	if got, want := mockCreator.ctx, c; got != want {
 		t.Fatalf("got %v, want %v", got, want)
 	}
@@ -377,7 +394,13 @@ func TestAPI_EPCreationHandler_BadRequest(t *testing.T) {
 	c, _ := gin.CreateTestContext(w)
 	req := &http.Request{}
 	c.Request = req
+	dummyToken := "dummy-token"
+	c.Set("token", dummyToken)
 	// setup mocks
+	mockLeaderChecker := mockGroupLeaderChecker{
+		isLeader: true,
+		err:      nil,
+	}
 	mockCreator := mockEPCreator{
 		returnEP: types.EncounterProposal{
 			Name: "mock",
@@ -396,7 +419,7 @@ func TestAPI_EPCreationHandler_BadRequest(t *testing.T) {
 		nil,
 		nil,
 		nil,
-		nil,
+		&mockLeaderChecker,
 	).EPCreationHandler()(c)
 
 	// assertions
@@ -415,6 +438,22 @@ func TestAPI_EPCreationHandler_BadRequest(t *testing.T) {
 	if got, want := w.Result().StatusCode, http.StatusBadRequest; got != want {
 		t.Fatalf("got %v, want %v", got, want)
 	}
+	// verify mock received values
+	if got, want := mockLeaderChecker.ctx, nilCtx; got != want {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+	if got, want := mockLeaderChecker.groupID, ""; got != want {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+	if got, want := mockLeaderChecker.token, ""; got != want {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+	if got, want := mockCreator.ctx, nilCtx; got != want {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+	if got, want := mockCreator.receiveEP, emptyEP; !reflect.DeepEqual(got, want) {
+		t.Fatalf("got %v, want %v", got, want)
+	}
 }
 
 func TestAPI_EPCreationHandler_CreatorError(t *testing.T) {
@@ -422,7 +461,8 @@ func TestAPI_EPCreationHandler_CreatorError(t *testing.T) {
 
 	// setup request
 	dummyEP := types.EncounterProposal{
-		Name: "dummy",
+		Name:         "dummy",
+		Applications: []types.Application{},
 	}
 	epJSON, err := json.Marshal(dummyEP)
 	if err != nil {
@@ -434,7 +474,13 @@ func TestAPI_EPCreationHandler_CreatorError(t *testing.T) {
 		Body: io.NopCloser(bytes.NewBuffer(epJSON)),
 	}
 	c.Request = req
+	dummyToken := "dummy-token"
+	c.Set("token", dummyToken)
 	// setup mocks
+	mockLeaderChecker := mockGroupLeaderChecker{
+		isLeader: true,
+		err:      nil,
+	}
 	mockCreator := mockEPCreator{
 		returnEP: types.EncounterProposal{
 			Name: "mock",
@@ -453,7 +499,7 @@ func TestAPI_EPCreationHandler_CreatorError(t *testing.T) {
 		nil,
 		nil,
 		nil,
-		nil,
+		&mockLeaderChecker,
 	).EPCreationHandler()(c)
 
 	// assertions
@@ -473,10 +519,179 @@ func TestAPI_EPCreationHandler_CreatorError(t *testing.T) {
 		t.Fatalf("got %v, want %v", got, want)
 	}
 	// verify mocks received values
+	if got, want := mockLeaderChecker.ctx, c; got != want {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+	if got, want := mockLeaderChecker.groupID, dummyEP.ID; got != want {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+	if got, want := mockLeaderChecker.token, dummyToken; got != want {
+		t.Fatalf("got %v, want %v", got, want)
+	}
 	if got, want := mockCreator.ctx, c; got != want {
 		t.Fatalf("got %v, want %v", got, want)
 	}
 	if got, want := mockCreator.receiveEP, dummyEP; !reflect.DeepEqual(got, want) {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+}
+
+func TestAPI_EPCreationHandler_LeaderFalse(t *testing.T) {
+	// prepare test setup
+
+	// setup request
+	dummyEP := types.EncounterProposal{
+		Name:         "dummy",
+		Applications: []types.Application{},
+	}
+	epJSON, err := json.Marshal(dummyEP)
+	if err != nil {
+		t.Fatalf("unable to marshal request body")
+	}
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	req := &http.Request{
+		Body: io.NopCloser(bytes.NewBuffer(epJSON)),
+	}
+	c.Request = req
+	dummyToken := "dummy-token"
+	c.Set("token", dummyToken)
+	// setup mocks
+	mockLeaderChecker := mockGroupLeaderChecker{
+		isLeader: false,
+		err:      nil,
+	}
+	mockCreator := mockEPCreator{
+		returnEP: types.EncounterProposal{
+			Name: "mock",
+		},
+		err: errors.New("mock EP creator error"),
+	}
+
+	// run code under test
+
+	api.New(
+		&mockCreator,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		&mockLeaderChecker,
+	).EPCreationHandler()(c)
+
+	// assertions
+
+	// verify response body
+	var resp struct {
+		Error string
+	}
+	if err := json.NewDecoder(w.Result().Body).Decode(&resp); err != nil {
+		t.Fatalf("unable to decode response body to json")
+	}
+	if got, want := resp.Error, "unauthorized"; got != want {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+	// verify response status code
+	if got, want := w.Result().StatusCode, http.StatusUnauthorized; got != want {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+	// verify mocks received values
+	if got, want := mockLeaderChecker.ctx, c; got != want {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+	if got, want := mockLeaderChecker.groupID, dummyEP.ID; got != want {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+	if got, want := mockLeaderChecker.token, dummyToken; got != want {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+	if got, want := mockCreator.ctx, nilCtx; got != want {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+	if got, want := mockCreator.receiveEP, emptyEP; !reflect.DeepEqual(got, want) {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+}
+
+func TestAPI_EPCreationHandler_LeaderError(t *testing.T) {
+	// prepare test setup
+
+	// setup request
+	dummyEP := types.EncounterProposal{
+		Name:         "dummy",
+		Applications: []types.Application{},
+	}
+	epJSON, err := json.Marshal(dummyEP)
+	if err != nil {
+		t.Fatalf("unable to marshal request body")
+	}
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	req := &http.Request{
+		Body: io.NopCloser(bytes.NewBuffer(epJSON)),
+	}
+	c.Request = req
+	dummyToken := "dummy-token"
+	c.Set("token", dummyToken)
+	// setup mocks
+	mockLeaderChecker := mockGroupLeaderChecker{
+		isLeader: true,
+		err:      errors.New("mock checker error"),
+	}
+	mockCreator := mockEPCreator{
+		returnEP: types.EncounterProposal{
+			Name: "mock",
+		},
+		err: errors.New("mock EP creator error"),
+	}
+
+	// run code under test
+
+	api.New(
+		&mockCreator,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		&mockLeaderChecker,
+	).EPCreationHandler()(c)
+
+	// assertions
+
+	// verify response body
+	var resp struct {
+		Error string
+	}
+	if err := json.NewDecoder(w.Result().Body).Decode(&resp); err != nil {
+		t.Fatalf("unable to decode response body to json")
+	}
+	if got, want := resp.Error, "unauthorized"; got != want {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+	// verify response status code
+	if got, want := w.Result().StatusCode, http.StatusUnauthorized; got != want {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+	// verify mocks received values
+	if got, want := mockLeaderChecker.ctx, c; got != want {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+	if got, want := mockLeaderChecker.groupID, dummyEP.ID; got != want {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+	if got, want := mockLeaderChecker.token, dummyToken; got != want {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+	if got, want := mockCreator.ctx, nilCtx; got != want {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+	if got, want := mockCreator.receiveEP, emptyEP; !reflect.DeepEqual(got, want) {
 		t.Fatalf("got %v, want %v", got, want)
 	}
 }
@@ -966,6 +1181,10 @@ func TestAPI_EPUpdateHandler_OK(t *testing.T) {
 	c.Request = req
 	c.AddParam("epid", dummyEPID)
 	// setup mocks
+	mockReader := mockByIDEPReader{
+		ep:  dummyEP,
+		err: nil,
+	}
 	mockUpdater := mockEPUpdater{
 		returnEP: types.EncounterProposal{
 			Name: "mock",
@@ -979,7 +1198,7 @@ func TestAPI_EPUpdateHandler_OK(t *testing.T) {
 		nil,
 		nil,
 		nil,
-		nil,
+		&mockReader,
 		&mockUpdater,
 		nil,
 		nil,
@@ -1004,6 +1223,12 @@ func TestAPI_EPUpdateHandler_OK(t *testing.T) {
 		t.Fatalf("got %v, want %v", got, want)
 	}
 	// verify mocks received values
+	if got, want := mockReader.ctx, c; got != want {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+	if got, want := mockReader.id, dummyEPID; got != want {
+		t.Fatalf("got %v, want %v", got, want)
+	}
 	if got, want := mockUpdater.ctx, c; got != want {
 		t.Fatalf("got %v, want %v", got, want)
 	}
@@ -1023,6 +1248,13 @@ func TestAPI_EPUpdateHandler_BadRequest(t *testing.T) {
 	c.Request = req
 	c.AddParam("epid", dummyEPID)
 	// setup mocks
+	mockReader := mockByIDEPReader{
+		ep: types.EncounterProposal{
+			ID:   dummyEPID,
+			Name: "dummy",
+		},
+		err: nil,
+	}
 	mockUpdater := mockEPUpdater{
 		returnEP: types.EncounterProposal{
 			Name: "mock",
@@ -1036,7 +1268,7 @@ func TestAPI_EPUpdateHandler_BadRequest(t *testing.T) {
 		nil,
 		nil,
 		nil,
-		nil,
+		&mockReader,
 		&mockUpdater,
 		nil,
 		nil,
@@ -1061,6 +1293,12 @@ func TestAPI_EPUpdateHandler_BadRequest(t *testing.T) {
 		t.Fatalf("got %v, want %v", got, want)
 	}
 	// verify mocks received values
+	if got, want := mockReader.ctx, nilCtx; got != want {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+	if got, want := mockReader.id, ""; got != want {
+		t.Fatalf("got %v, want %v", got, want)
+	}
 	if got, want := mockUpdater.ctx, nilCtx; got != want {
 		t.Fatalf("got %v, want %v", got, want)
 	}
@@ -1090,6 +1328,10 @@ func TestAPI_EPUpdateHandler_MismatchingID(t *testing.T) {
 	c.Request = req
 	c.AddParam("epid", "mismatching-id")
 	// setup mocks
+	mockReader := mockByIDEPReader{
+		ep:  dummyEP,
+		err: nil,
+	}
 	mockUpdater := mockEPUpdater{
 		returnEP: types.EncounterProposal{
 			Name: "mock",
@@ -1103,7 +1345,7 @@ func TestAPI_EPUpdateHandler_MismatchingID(t *testing.T) {
 		nil,
 		nil,
 		nil,
-		nil,
+		&mockReader,
 		&mockUpdater,
 		nil,
 		nil,
@@ -1128,6 +1370,89 @@ func TestAPI_EPUpdateHandler_MismatchingID(t *testing.T) {
 		t.Fatalf("got %v, want %v", got, want)
 	}
 	// verify mocks received values
+	if got, want := mockReader.ctx, nilCtx; got != want {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+	if got, want := mockReader.id, ""; got != want {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+	if got, want := mockUpdater.ctx, nilCtx; got != want {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+	if got, want := mockUpdater.receiveEP, emptyEP; !reflect.DeepEqual(got, want) {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+}
+
+func TestAPI_EPUpdateHandler_ReaderError(t *testing.T) {
+	// prepare test setup
+
+	// setup request
+	dummyEPID := "dummy-ep-id"
+	dummyEP := types.EncounterProposal{
+		ID:   dummyEPID,
+		Name: "dummy",
+	}
+	epJSON, err := json.Marshal(dummyEP)
+	if err != nil {
+		t.Fatalf("unable to marshal request body")
+	}
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	req := &http.Request{
+		Body: io.NopCloser(bytes.NewBuffer(epJSON)),
+	}
+	c.Request = req
+	c.AddParam("epid", dummyEPID)
+	// setup mocks
+	mockReader := mockByIDEPReader{
+		ep:  dummyEP,
+		err: errors.New("mock reader error"),
+	}
+	mockUpdater := mockEPUpdater{
+		returnEP: types.EncounterProposal{
+			Name: "mock",
+		},
+		err: nil,
+	}
+
+	// run code under test
+
+	api.New(
+		nil,
+		nil,
+		nil,
+		&mockReader,
+		&mockUpdater,
+		nil,
+		nil,
+		nil,
+		nil,
+	).EPUpdateHandler()(c)
+
+	// assertions
+
+	// verify response body
+	var resp struct {
+		Error string
+	}
+	if err := json.NewDecoder(w.Result().Body).Decode(&resp); err != nil {
+		t.Fatalf("unable to decode response body to json")
+	}
+	if resp.Error == "" {
+		t.Fatalf("got response body error \"\", want some error")
+	}
+	// verify response status code
+	if got, want := w.Result().StatusCode, http.StatusNotFound; got != want {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+	// verify mocks received values
+	if got, want := mockReader.ctx, c; got != want {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+	if got, want := mockReader.id, dummyEPID; got != want {
+		t.Fatalf("got %v, want %v", got, want)
+	}
 	if got, want := mockUpdater.ctx, nilCtx; got != want {
 		t.Fatalf("got %v, want %v", got, want)
 	}
@@ -1157,6 +1482,10 @@ func TestAPI_EPUpdateHandler_UpdaterError(t *testing.T) {
 	c.Request = req
 	c.AddParam("epid", dummyEPID)
 	// setup mocks
+	mockReader := mockByIDEPReader{
+		ep:  dummyEP,
+		err: nil,
+	}
 	mockUpdater := mockEPUpdater{
 		returnEP: types.EncounterProposal{
 			Name: "mock",
@@ -1170,7 +1499,7 @@ func TestAPI_EPUpdateHandler_UpdaterError(t *testing.T) {
 		nil,
 		nil,
 		nil,
-		nil,
+		&mockReader,
 		&mockUpdater,
 		nil,
 		nil,
@@ -1195,6 +1524,12 @@ func TestAPI_EPUpdateHandler_UpdaterError(t *testing.T) {
 		t.Fatalf("got %v, want %v", got, want)
 	}
 	// verify mocks received values
+	if got, want := mockReader.ctx, c; got != want {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+	if got, want := mockReader.id, dummyEPID; got != want {
+		t.Fatalf("got %v, want %v", got, want)
+	}
 	if got, want := mockUpdater.ctx, c; got != want {
 		t.Fatalf("got %v, want %v", got, want)
 	}
@@ -1364,7 +1699,7 @@ func TestAPI_AppCreationHandler_OK(t *testing.T) {
 	if err := json.NewDecoder(w.Result().Body).Decode(&resp); err != nil {
 		t.Fatalf("unable to decode response body to json")
 	}
-	if got, want := resp.Message, "applied for "+dummyEPID; !reflect.DeepEqual(got, want) {
+	if got, want := resp.Message, "applied for encounter proposal "+dummyEPID; !reflect.DeepEqual(got, want) {
 		t.Fatalf("got %v, want %v", got, want)
 	}
 	// verify response status code

@@ -94,7 +94,7 @@ func (api API) EPCreatorGroupLeaderCheckerMiddleware() gin.HandlerFunc {
 			return apiErrorUnauthorized
 		}
 
-		return status{}
+		return next()
 
 	})
 }
@@ -107,19 +107,21 @@ func (api API) EPCreationHandler() gin.HandlerFunc {
 			return er(http.StatusBadRequest, err)
 		}
 
-		ep, err := api.epCreator.Create(ctx, ep)
+		// check that user sending request is leader of creator group
+		token := ctx.GetString(authenticatedUserToken)
+		isLeader, err := api.leaderChecker.IsGroupLeader(ctx, token, ep.Creator.ID)
+		if err != nil || !isLeader {
+			return result{s: apiErrorUnauthorized}
+		}
+
+		ep, err = api.epCreator.Create(ctx, ep)
 		if err != nil {
 			return er(http.StatusConflict, err)
 		}
 
 		return result{
-			s: status{
-				code: http.StatusCreated,
-			},
-			r: resource{
-				k: encounterProposal,
-				v: ep,
-			},
+			s: status{code: http.StatusCreated},
+			r: resource{k: "id", v: ep.ID},
 		}
 
 	})
@@ -192,7 +194,14 @@ func (api API) EPUpdateHandler() gin.HandlerFunc {
 			return er(http.StatusUnprocessableEntity, errors.New("cannot update id"))
 		}
 
-		ep, err := api.epUpdater.Update(ctx, ep)
+		// reset user input on applications field
+		readEP, err := api.byIDEPReader.ReadByID(ctx, ep.ID)
+		if err != nil {
+			return er(http.StatusNotFound, err)
+		}
+		ep.Applications = readEP.Applications
+
+		ep, err = api.epUpdater.Update(ctx, ep)
 		if err != nil {
 			return er(http.StatusNotFound, err)
 		}
@@ -241,7 +250,7 @@ func (api API) AppCreationHandler() gin.HandlerFunc {
 			return er(http.StatusNotFound, err)
 		}
 
-		return ok(message, fmt.Sprintf("applied for %s", epID))
+		return ok(message, fmt.Sprintf("applied for encounter proposal %s", epID))
 
 	})
 }
@@ -302,6 +311,10 @@ func er(code int, err error) result {
 			err:  err,
 		},
 	}
+}
+
+func next() status {
+	return status{}
 }
 
 var (
