@@ -22,15 +22,26 @@ type Group struct {
 }
 
 type EncounterProposal struct {
-	ID           string        `json:"id" bson:"_id,omitempty"`
-	Name         string        `json:"name" bson:"name"`
-	Description  string        `json:"description" bson:"description"`
-	Time         time.Time     `json:"time" bson:"time"`
-	Creator      Group         `json:"creator" bson:"creator"`
-	Applications []Application `json:"applications" bson:"applications"`
+	ID                     string `json:"id" bson:"_id,omitempty"`
+	EncounterSpecification `json:"encounterSpecification" bson:"encounterSpecification"`
+	Creator                Group         `json:"creator" bson:"creator"`
+	Applications           []Application `json:"applications" bson:"applications"`
+}
+
+type EncounterSpecification struct {
+	Name        string    `json:"name" bson:"name"`
+	Description string    `json:"description" bson:"description"`
+	Location    Location  `json:"location" bson:"location"`
+	Time        time.Time `json:"time" bson:"time"`
+}
+
+type Location struct {
+	Name      string  `json:"name" bson:"name"`
+	Latitude  float64 `json:"latitude" bson:"latitude"`
+	Longitude float64 `json:"longitude" bson:"longitude"`
 }
 
 type Application struct {
 	Description string `json:"description" bson:"description"`
-	Creator     Group  `json:"creator" bson:"creator"`
+	Applicant   Group  `json:"applicant" bson:"applicant"`
 }

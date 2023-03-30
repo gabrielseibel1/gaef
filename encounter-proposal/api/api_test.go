@@ -35,8 +35,8 @@ func TestAPI_EPCreatorGroupLeaderCheckerMiddleware_OK(t *testing.T) {
 	}
 	mockReader := mockByIDEPReader{
 		ep: types.EncounterProposal{
-			Creator: types.Group{ID: "dummy-group-id"},
-			Name:    "mock",
+			Creator:                types.Group{ID: "dummy-group-id"},
+			EncounterSpecification: types.EncounterSpecification{Name: "mock"},
 		},
 		err: nil,
 	}
@@ -102,8 +102,8 @@ func TestAPI_EPCreatorGroupLeaderCheckerMiddleware_ReaderError(t *testing.T) {
 	}
 	mockReader := mockByIDEPReader{
 		ep: types.EncounterProposal{
-			Creator: types.Group{ID: "dummy-group-id"},
-			Name:    "mock",
+			Creator:                types.Group{ID: "dummy-group-id"},
+			EncounterSpecification: types.EncounterSpecification{Name: "mock"},
 		},
 		err: errors.New("mock reader error"),
 	}
@@ -176,8 +176,8 @@ func TestAPI_EPCreatorGroupLeaderCheckerMiddleware_LeaderError(t *testing.T) {
 	}
 	mockReader := mockByIDEPReader{
 		ep: types.EncounterProposal{
-			Creator: types.Group{ID: "dummy-group-id"},
-			Name:    "mock",
+			Creator:                types.Group{ID: "dummy-group-id"},
+			EncounterSpecification: types.EncounterSpecification{Name: "mock"},
 		},
 		err: nil,
 	}
@@ -250,8 +250,8 @@ func TestAPI_EPCreatorGroupLeaderCheckerMiddleware_LeaderFalse(t *testing.T) {
 	}
 	mockReader := mockByIDEPReader{
 		ep: types.EncounterProposal{
-			Creator: types.Group{ID: "dummy-group-id"},
-			Name:    "mock",
+			Creator:                types.Group{ID: "dummy-group-id"},
+			EncounterSpecification: types.EncounterSpecification{Name: "mock"},
 		},
 		err: nil,
 	}
@@ -310,8 +310,8 @@ func TestAPI_EPCreationHandler_OK(t *testing.T) {
 
 	// setup request
 	dummyEP := types.EncounterProposal{
-		Name:         "dummy",
-		Applications: []types.Application{},
+		EncounterSpecification: types.EncounterSpecification{Name: "dummy"},
+		Applications:           []types.Application{},
 	}
 	epJSON, err := json.Marshal(dummyEP)
 	if err != nil {
@@ -332,8 +332,8 @@ func TestAPI_EPCreationHandler_OK(t *testing.T) {
 	}
 	mockCreator := mockEPCreator{
 		returnEP: types.EncounterProposal{
-			ID:   "mock-id",
-			Name: "mock-name",
+			ID:                     "mock-id",
+			EncounterSpecification: types.EncounterSpecification{Name: "mock-name"},
 		},
 		err: nil,
 	}
@@ -403,7 +403,7 @@ func TestAPI_EPCreationHandler_BadRequest(t *testing.T) {
 	}
 	mockCreator := mockEPCreator{
 		returnEP: types.EncounterProposal{
-			Name: "mock",
+			EncounterSpecification: types.EncounterSpecification{Name: "mock"},
 		},
 		err: nil,
 	}
@@ -461,8 +461,8 @@ func TestAPI_EPCreationHandler_CreatorError(t *testing.T) {
 
 	// setup request
 	dummyEP := types.EncounterProposal{
-		Name:         "dummy",
-		Applications: []types.Application{},
+		EncounterSpecification: types.EncounterSpecification{Name: "dummy"},
+		Applications:           []types.Application{},
 	}
 	epJSON, err := json.Marshal(dummyEP)
 	if err != nil {
@@ -483,7 +483,7 @@ func TestAPI_EPCreationHandler_CreatorError(t *testing.T) {
 	}
 	mockCreator := mockEPCreator{
 		returnEP: types.EncounterProposal{
-			Name: "mock",
+			EncounterSpecification: types.EncounterSpecification{Name: "mock"},
 		},
 		err: errors.New("mock EP creator error"),
 	}
@@ -541,8 +541,8 @@ func TestAPI_EPCreationHandler_LeaderFalse(t *testing.T) {
 
 	// setup request
 	dummyEP := types.EncounterProposal{
-		Name:         "dummy",
-		Applications: []types.Application{},
+		EncounterSpecification: types.EncounterSpecification{Name: "dummy"},
+		Applications:           []types.Application{},
 	}
 	epJSON, err := json.Marshal(dummyEP)
 	if err != nil {
@@ -563,7 +563,7 @@ func TestAPI_EPCreationHandler_LeaderFalse(t *testing.T) {
 	}
 	mockCreator := mockEPCreator{
 		returnEP: types.EncounterProposal{
-			Name: "mock",
+			EncounterSpecification: types.EncounterSpecification{Name: "mock"},
 		},
 		err: errors.New("mock EP creator error"),
 	}
@@ -621,8 +621,8 @@ func TestAPI_EPCreationHandler_LeaderError(t *testing.T) {
 
 	// setup request
 	dummyEP := types.EncounterProposal{
-		Name:         "dummy",
-		Applications: []types.Application{},
+		EncounterSpecification: types.EncounterSpecification{Name: "dummy"},
+		Applications:           []types.Application{},
 	}
 	epJSON, err := json.Marshal(dummyEP)
 	if err != nil {
@@ -643,7 +643,7 @@ func TestAPI_EPCreationHandler_LeaderError(t *testing.T) {
 	}
 	mockCreator := mockEPCreator{
 		returnEP: types.EncounterProposal{
-			Name: "mock",
+			EncounterSpecification: types.EncounterSpecification{Name: "mock"},
 		},
 		err: errors.New("mock EP creator error"),
 	}
@@ -707,7 +707,10 @@ func TestAPI_EPReadingAllHandler_OK(t *testing.T) {
 	c.AddParam("page", "42")
 	// setup mocks
 	mockReader := mockPagedEPsReader{
-		eps: []types.EncounterProposal{{Name: "test1"}, {Name: "test2"}},
+		eps: []types.EncounterProposal{
+			{EncounterSpecification: types.EncounterSpecification{Name: "test1"}},
+			{EncounterSpecification: types.EncounterSpecification{Name: "test2"}},
+		},
 		err: nil,
 	}
 
@@ -761,7 +764,10 @@ func TestAPI_EPReadingAllHandler_BadRequest(t *testing.T) {
 	c.AddParam("page", "not a number")
 	// setup mocks
 	mockReader := mockPagedEPsReader{
-		eps: []types.EncounterProposal{{Name: "test1"}, {Name: "test2"}},
+		eps: []types.EncounterProposal{
+			{EncounterSpecification: types.EncounterSpecification{Name: "test1"}},
+			{EncounterSpecification: types.EncounterSpecification{Name: "test2"}},
+		},
 		err: nil,
 	}
 
@@ -808,7 +814,10 @@ func TestAPI_EPReadingAllHandler_ReaderError(t *testing.T) {
 	c.AddParam("page", "42")
 	// setup mocks
 	mockReader := mockPagedEPsReader{
-		eps: []types.EncounterProposal{{Name: "test1"}, {Name: "test2"}},
+		eps: []types.EncounterProposal{
+			{EncounterSpecification: types.EncounterSpecification{Name: "test1"}},
+			{EncounterSpecification: types.EncounterSpecification{Name: "test2"}},
+		},
 		err: errors.New("mock reader error"),
 	}
 
@@ -863,7 +872,10 @@ func TestAPI_EPReadingByUserHandler_OK(t *testing.T) {
 	c.Set("token", dummyToken)
 	// setup mocks
 	mockReader := mockByGroupIDsReader{
-		eps: []types.EncounterProposal{{Name: "test1"}, {Name: "test2"}},
+		eps: []types.EncounterProposal{
+			{EncounterSpecification: types.EncounterSpecification{Name: "test1"}},
+			{EncounterSpecification: types.EncounterSpecification{Name: "test2"}},
+		},
 		err: nil,
 	}
 	mockLister := mockGroupLister{
@@ -932,7 +944,10 @@ func TestAPI_EPReadingByUserHandler_ListerError(t *testing.T) {
 		err:    errors.New("mock lister error"),
 	}
 	mockReader := mockByGroupIDsReader{
-		eps: []types.EncounterProposal{{Name: "test1"}, {Name: "test2"}},
+		eps: []types.EncounterProposal{
+			{EncounterSpecification: types.EncounterSpecification{Name: "test1"}},
+			{EncounterSpecification: types.EncounterSpecification{Name: "test2"}},
+		},
 		err: nil,
 	}
 
@@ -997,7 +1012,10 @@ func TestAPI_EPReadingByUserHandler_ReaderError(t *testing.T) {
 		err:    nil,
 	}
 	mockReader := mockByGroupIDsReader{
-		eps: []types.EncounterProposal{{Name: "test1"}, {Name: "test2"}},
+		eps: []types.EncounterProposal{
+			{EncounterSpecification: types.EncounterSpecification{Name: "test1"}},
+			{EncounterSpecification: types.EncounterSpecification{Name: "test2"}},
+		},
 		err: errors.New("mock reader error"),
 	}
 
@@ -1059,7 +1077,7 @@ func TestAPI_EPReadingByIDHandler_OK(t *testing.T) {
 	// setup mocks
 	mockReader := mockByIDEPReader{
 		ep: types.EncounterProposal{
-			Name: "mock",
+			EncounterSpecification: types.EncounterSpecification{Name: "mock"},
 		},
 		err: nil,
 	}
@@ -1116,7 +1134,7 @@ func TestAPI_EPReadingByIDHandler_ReaderError(t *testing.T) {
 	// setup mocks
 	mockReader := mockByIDEPReader{
 		ep: types.EncounterProposal{
-			Name: "mock",
+			EncounterSpecification: types.EncounterSpecification{Name: "mock"},
 		},
 		err: errors.New("mock reader error"),
 	}
@@ -1166,8 +1184,8 @@ func TestAPI_EPUpdateHandler_OK(t *testing.T) {
 	// setup request
 	dummyEPID := "dummy-ep-id"
 	dummyEP := types.EncounterProposal{
-		ID:   dummyEPID,
-		Name: "dummy",
+		ID:                     dummyEPID,
+		EncounterSpecification: types.EncounterSpecification{Name: "dummy"},
 	}
 	epJSON, err := json.Marshal(dummyEP)
 	if err != nil {
@@ -1187,7 +1205,7 @@ func TestAPI_EPUpdateHandler_OK(t *testing.T) {
 	}
 	mockUpdater := mockEPUpdater{
 		returnEP: types.EncounterProposal{
-			Name: "mock",
+			EncounterSpecification: types.EncounterSpecification{Name: "mock"},
 		},
 		err: nil,
 	}
@@ -1250,14 +1268,14 @@ func TestAPI_EPUpdateHandler_BadRequest(t *testing.T) {
 	// setup mocks
 	mockReader := mockByIDEPReader{
 		ep: types.EncounterProposal{
-			ID:   dummyEPID,
-			Name: "dummy",
+			ID:                     dummyEPID,
+			EncounterSpecification: types.EncounterSpecification{Name: "dummy"},
 		},
 		err: nil,
 	}
 	mockUpdater := mockEPUpdater{
 		returnEP: types.EncounterProposal{
-			Name: "mock",
+			EncounterSpecification: types.EncounterSpecification{Name: "mock"},
 		},
 		err: nil,
 	}
@@ -1313,8 +1331,8 @@ func TestAPI_EPUpdateHandler_MismatchingID(t *testing.T) {
 	// setup request
 	dummyEPID := "dummy-ep-id"
 	dummyEP := types.EncounterProposal{
-		ID:   dummyEPID,
-		Name: "dummy",
+		ID:                     dummyEPID,
+		EncounterSpecification: types.EncounterSpecification{Name: "dummy"},
 	}
 	epJSON, err := json.Marshal(dummyEP)
 	if err != nil {
@@ -1334,7 +1352,7 @@ func TestAPI_EPUpdateHandler_MismatchingID(t *testing.T) {
 	}
 	mockUpdater := mockEPUpdater{
 		returnEP: types.EncounterProposal{
-			Name: "mock",
+			EncounterSpecification: types.EncounterSpecification{Name: "mock"},
 		},
 		err: nil,
 	}
@@ -1390,8 +1408,8 @@ func TestAPI_EPUpdateHandler_ReaderError(t *testing.T) {
 	// setup request
 	dummyEPID := "dummy-ep-id"
 	dummyEP := types.EncounterProposal{
-		ID:   dummyEPID,
-		Name: "dummy",
+		ID:                     dummyEPID,
+		EncounterSpecification: types.EncounterSpecification{Name: "dummy"},
 	}
 	epJSON, err := json.Marshal(dummyEP)
 	if err != nil {
@@ -1411,7 +1429,7 @@ func TestAPI_EPUpdateHandler_ReaderError(t *testing.T) {
 	}
 	mockUpdater := mockEPUpdater{
 		returnEP: types.EncounterProposal{
-			Name: "mock",
+			EncounterSpecification: types.EncounterSpecification{Name: "mock"},
 		},
 		err: nil,
 	}
@@ -1467,8 +1485,8 @@ func TestAPI_EPUpdateHandler_UpdaterError(t *testing.T) {
 	// setup request
 	dummyEPID := "dummy-ep-id"
 	dummyEP := types.EncounterProposal{
-		ID:   dummyEPID,
-		Name: "dummy",
+		ID:                     dummyEPID,
+		EncounterSpecification: types.EncounterSpecification{Name: "dummy"},
 	}
 	epJSON, err := json.Marshal(dummyEP)
 	if err != nil {
@@ -1488,7 +1506,7 @@ func TestAPI_EPUpdateHandler_UpdaterError(t *testing.T) {
 	}
 	mockUpdater := mockEPUpdater{
 		returnEP: types.EncounterProposal{
-			Name: "mock",
+			EncounterSpecification: types.EncounterSpecification{Name: "mock"},
 		},
 		err: errors.New("mock updater error"),
 	}
@@ -1648,7 +1666,7 @@ func TestAPI_AppCreationHandler_OK(t *testing.T) {
 	// setup request
 	dummyGroupID := "dummy-group-id"
 	dummyApp := types.Application{
-		Creator: types.Group{ID: dummyGroupID},
+		Applicant: types.Group{ID: dummyGroupID},
 	}
 	epJSON, err := json.Marshal(dummyApp)
 	if err != nil {
@@ -1667,7 +1685,7 @@ func TestAPI_AppCreationHandler_OK(t *testing.T) {
 	// setup mocks
 	mockAppender := mockAppAppender{
 		ep: types.EncounterProposal{
-			Name: "mock appender proposal",
+			EncounterSpecification: types.EncounterSpecification{Name: "mock appender proposal"},
 		},
 		err: nil,
 	}
@@ -1742,7 +1760,7 @@ func TestAPI_AppCreationHandler_BadRequest(t *testing.T) {
 	// setup mocks
 	mockAppender := mockAppAppender{
 		ep: types.EncounterProposal{
-			Name: "mock appender proposal",
+			EncounterSpecification: types.EncounterSpecification{Name: "mock appender proposal"},
 		},
 		err: nil,
 	}
@@ -1808,7 +1826,7 @@ func TestAPI_AppCreationHandler_LeaderCheckerFalse(t *testing.T) {
 	// setup request
 	dummyGroupID := "dummy-group-id"
 	dummyApp := types.Application{
-		Creator: types.Group{ID: dummyGroupID},
+		Applicant: types.Group{ID: dummyGroupID},
 	}
 	epJSON, err := json.Marshal(dummyApp)
 	if err != nil {
@@ -1827,7 +1845,7 @@ func TestAPI_AppCreationHandler_LeaderCheckerFalse(t *testing.T) {
 	// setup mocks
 	mockAppender := mockAppAppender{
 		ep: types.EncounterProposal{
-			Name: "mock appender proposal",
+			EncounterSpecification: types.EncounterSpecification{Name: "mock appender proposal"},
 		},
 		err: nil,
 	}
@@ -1893,7 +1911,7 @@ func TestAPI_AppCreationHandler_LeaderCheckerError(t *testing.T) {
 	// setup request
 	dummyGroupID := "dummy-group-id"
 	dummyApp := types.Application{
-		Creator: types.Group{ID: dummyGroupID},
+		Applicant: types.Group{ID: dummyGroupID},
 	}
 	epJSON, err := json.Marshal(dummyApp)
 	if err != nil {
@@ -1912,7 +1930,7 @@ func TestAPI_AppCreationHandler_LeaderCheckerError(t *testing.T) {
 	// setup mocks
 	mockAppender := mockAppAppender{
 		ep: types.EncounterProposal{
-			Name: "mock appender proposal",
+			EncounterSpecification: types.EncounterSpecification{Name: "mock appender proposal"},
 		},
 		err: nil,
 	}
@@ -1978,7 +1996,7 @@ func TestAPI_AppCreationHandler_AppenderError(t *testing.T) {
 	// setup request
 	dummyGroupID := "dummy-group-id"
 	dummyApp := types.Application{
-		Creator: types.Group{ID: dummyGroupID},
+		Applicant: types.Group{ID: dummyGroupID},
 	}
 	epJSON, err := json.Marshal(dummyApp)
 	if err != nil {
@@ -1997,7 +2015,7 @@ func TestAPI_AppCreationHandler_AppenderError(t *testing.T) {
 	// setup mocks
 	mockAppender := mockAppAppender{
 		ep: types.EncounterProposal{
-			Name: "mock appender proposal",
+			EncounterSpecification: types.EncounterSpecification{Name: "mock appender proposal"},
 		},
 		err: errors.New("mock appender error"),
 	}

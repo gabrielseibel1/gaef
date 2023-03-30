@@ -73,28 +73,34 @@ func TestClient_Localhost8082(t *testing.T) {
 	// 2 - created by g3 (leader user 2)
 	// 3 - created by g1 (leader user 1)
 	createdEP1ID, err := encounterProposalClient.CreateEP(ctx, token2, types.EncounterProposal{
-		Name:        "EP1",
-		Description: "ep1 desc",
-		Time:        time.Now().Add(time.Hour * 24),
-		Creator:     g2,
+		EncounterSpecification: types.EncounterSpecification{
+			Name:        "EP1",
+			Description: "ep1 desc",
+			Time:        time.Now().Add(time.Hour * 24),
+		},
+		Creator: g2,
 	})
 	if err != nil {
 		t.Fatalf("encounterProposalClient.CreateEP() = err: %s", err.Error())
 	}
 	createdEP2ID, err := encounterProposalClient.CreateEP(ctx, token2, types.EncounterProposal{
-		Name:        "EP2",
-		Description: "ep2 desc",
-		Time:        time.Now().Add(time.Hour * 24),
-		Creator:     g3,
+		EncounterSpecification: types.EncounterSpecification{
+			Name:        "EP2",
+			Description: "ep2 desc",
+			Time:        time.Now().Add(time.Hour * 24),
+		},
+		Creator: g3,
 	})
 	if err != nil {
 		t.Fatalf("encounterProposalClient.CreateEP() = err: %s", err.Error())
 	}
 	createdEP3ID, err := encounterProposalClient.CreateEP(ctx, token1, types.EncounterProposal{
-		Name:        "EP3",
-		Description: "ep3 desc",
-		Time:        time.Now().Add(time.Hour * 24),
-		Creator:     g1,
+		EncounterSpecification: types.EncounterSpecification{
+			Name:        "EP3",
+			Description: "ep3 desc",
+			Time:        time.Now().Add(time.Hour * 24),
+		},
+		Creator: g1,
 	})
 	if err != nil {
 		t.Fatalf("encounterProposalClient.CreateEP() = err: %s", err.Error())
@@ -190,7 +196,7 @@ func TestClient_Localhost8082(t *testing.T) {
 	// append an application ot an encounter proposal (use token 1, user 1, leader of g1)
 	appliedMessage, err := encounterProposalClient.ApplyToEP(ctx, token1, readEP2.ID, types.Application{
 		Description: "application1",
-		Creator:     g1,
+		Applicant:   g1,
 	})
 	if err != nil {
 		t.Fatalf("encounterProposalClient.ApplyToEP() = err: %s", err.Error())

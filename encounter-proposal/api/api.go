@@ -235,7 +235,7 @@ func (api API) AppCreationHandler() gin.HandlerFunc {
 
 		// check if user is a leader of the applicant group
 		token := ctx.GetString(authenticatedUserToken)
-		isLeader, err := api.leaderChecker.IsGroupLeader(ctx, token, app.Creator.ID)
+		isLeader, err := api.leaderChecker.IsGroupLeader(ctx, token, app.Applicant.ID)
 		if err != nil {
 			return er(http.StatusUnauthorized, err)
 		}
