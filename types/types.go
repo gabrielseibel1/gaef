@@ -45,3 +45,11 @@ type Application struct {
 	Description string `json:"description" bson:"description"`
 	Applicant   Group  `json:"applicant" bson:"applicant"`
 }
+
+type Encounter struct {
+	ID                     string `json:"id" bson:"_id,omitempty"`
+	EncounterSpecification `json:"encounterSpecification" bson:"encounterSpecification"`
+	Groups                 []Group `json:"groups" bson:"groups"`
+	InvitedUsers           []User  `json:"invitedUsers" bson:"invitedUsers"`
+	ConfirmedUsers         []User  `json:"confirmedUsers" bson:"confirmedUsers"`
+}
