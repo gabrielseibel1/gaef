@@ -6,14 +6,18 @@ import (
 	"github.com/gabrielseibel1/gaef/encounter/api"
 	"github.com/gabrielseibel1/gaef/types"
 	"github.com/stretchr/testify/assert"
+	"net/http"
 	"testing"
 	"time"
 )
 
+func dummyAPIError(status int) api.Result {
+	return api.Result{Status: status, Name: "error", Value: dummyError.Error()}
+}
+
 var (
 	dummyError           = errors.New("dummy error")
-	dummyAPIError        = api.Result{Name: "error", Value: dummyError.Error(), Err: dummyError}
-	unauthorizedAPIError = api.Result{Name: "error", Value: "unauthorized", Err: errors.New("unauthorized")}
+	unauthorizedAPIError = api.Result{Status: http.StatusUnauthorized, Name: "error", Value: "unauthorized"}
 	dummyCtx             = context.TODO()
 	dummyToken           = "dummy-token"
 	dummyID              = "dummy-id"
@@ -104,6 +108,21 @@ func apiFromMocks(m mocks) api.API {
 	)
 }
 
+func TestResult_S(t *testing.T) {
+	r := api.Result{Status: 42}
+	assert.Equal(t, 42, r.S())
+}
+
+func TestResult_K(t *testing.T) {
+	r := api.Result{Name: "name"}
+	assert.Equal(t, "name", r.K())
+}
+
+func TestResult_V(t *testing.T) {
+	r := api.Result{Value: "val"}
+	assert.Equal(t, "val", r.V())
+}
+
 func TestAPI_CreateEncounter(t *testing.T) {
 	type args struct {
 		ctx   context.Context
@@ -130,8 +149,9 @@ func TestAPI_CreateEncounter(t *testing.T) {
 			},
 			args: dummyArgs,
 			want: api.Result{
-				Name:  "id",
-				Value: dummyID,
+				Status: http.StatusOK,
+				Name:   "id",
+				Value:  dummyID,
 			},
 			wantMocks: mocks{
 				encounterCreator: &mockEncounterCreator{
@@ -154,7 +174,7 @@ func TestAPI_CreateEncounter(t *testing.T) {
 				leaderChecker:    &mockLeaderChecker{isLeader: true, err: dummyError},
 			},
 			args: dummyArgs,
-			want: dummyAPIError,
+			want: dummyAPIError(http.StatusUnauthorized),
 			wantMocks: mocks{
 				encounterCreator: &mockEncounterCreator{
 					id: dummyID,
@@ -195,11 +215,7 @@ func TestAPI_CreateEncounter(t *testing.T) {
 				leaderChecker:    &mockLeaderChecker{isLeader: true},
 			},
 			args: dummyArgs,
-			want: api.Result{
-				Name:  "error",
-				Value: dummyError.Error(),
-				Err:   dummyError,
-			},
+			want: dummyAPIError(http.StatusUnprocessableEntity),
 			wantMocks: mocks{
 				encounterCreator: &mockEncounterCreator{
 					ctx: dummyCtx,
@@ -254,8 +270,9 @@ func TestAPI_ReadUserEncounters(t *testing.T) {
 			mocks: mocks{userEncountersReader: &mockUserEncountersReader{encs: dummyEncounters}},
 			args:  dummyArgs,
 			want: api.Result{
-				Name:  "encounters",
-				Value: dummyEncounters,
+				Status: http.StatusOK,
+				Name:   "encounters",
+				Value:  dummyEncounters,
 			},
 			wantMocks: mocks{
 				userEncountersReader: &mockUserEncountersReader{
@@ -269,11 +286,7 @@ func TestAPI_ReadUserEncounters(t *testing.T) {
 			name:  "read user encounters error",
 			mocks: mocks{userEncountersReader: &mockUserEncountersReader{encs: dummyEncounters, err: dummyError}},
 			args:  dummyArgs,
-			want: api.Result{
-				Name:  "error",
-				Value: dummyError.Error(),
-				Err:   dummyError,
-			},
+			want:  dummyAPIError(http.StatusNotFound),
 			wantMocks: mocks{
 				userEncountersReader: &mockUserEncountersReader{
 					ctx:    dummyCtx,
@@ -324,7 +337,7 @@ func TestAPI_ReadEncounter(t *testing.T) {
 				encounterReader: &mockEncounterReader{enc: dummyEncounter1},
 			},
 			args: dummyArgs,
-			want: api.Result{Name: "encounter", Value: dummyEncounter1},
+			want: api.Result{Status: http.StatusOK, Name: "encounter", Value: dummyEncounter1},
 			wantMocks: mocks{
 				encounterReader: &mockEncounterReader{
 					ctx: dummyCtx,
@@ -339,7 +352,7 @@ func TestAPI_ReadEncounter(t *testing.T) {
 				encounterReader: &mockEncounterReader{enc: dummyEncounter1, err: dummyError},
 			},
 			args: dummyArgs,
-			want: dummyAPIError,
+			want: dummyAPIError(http.StatusNotFound),
 			wantMocks: mocks{
 				encounterReader: &mockEncounterReader{
 					ctx: dummyCtx,
@@ -375,7 +388,7 @@ func TestAPI_ReadEncounter(t *testing.T) {
 			assert.Equalf(
 				t,
 				tt.want,
-				a.ReadEncounter(tt.args.ctx, tt.args.encID, tt.args.userID),
+				a.ReadEncounter(tt.args.ctx, tt.args.userID, tt.args.encID),
 				"ReadEncounter(%v, %v, %v)",
 				tt.args.ctx,
 				tt.args.encID,
@@ -390,11 +403,13 @@ func TestAPI_UpdateEncounter(t *testing.T) {
 	type args struct {
 		ctx    context.Context
 		userID string
+		encID  string
 		enc    types.Encounter
 	}
 	dummyArgs := args{
 		ctx:    dummyCtx,
 		userID: dummyUser1.ID,
+		encID:  dummyEncounter1.ID,
 		enc:    dummyEncounter1,
 	}
 	tests := []struct {
@@ -412,8 +427,9 @@ func TestAPI_UpdateEncounter(t *testing.T) {
 			},
 			args: dummyArgs,
 			want: api.Result{
-				Name:  "encounter",
-				Value: dummyEncounter2,
+				Status: http.StatusOK,
+				Name:   "encounter",
+				Value:  dummyEncounter2,
 			},
 			wantMocks: mocks{
 				encounterReader: &mockEncounterReader{
@@ -437,6 +453,7 @@ func TestAPI_UpdateEncounter(t *testing.T) {
 			args: args{
 				ctx:    dummyCtx,
 				userID: dummyID,
+				encID:  dummyEncounter1.ID,
 				enc:    dummyEncounter1,
 			},
 			want: unauthorizedAPIError,
@@ -458,7 +475,7 @@ func TestAPI_UpdateEncounter(t *testing.T) {
 				encounterUpdater: &mockEncounterUpdater{retEnc: dummyEncounter2, err: dummyError},
 			},
 			args: dummyArgs,
-			want: dummyAPIError,
+			want: dummyAPIError(http.StatusNotFound),
 			wantMocks: mocks{
 				encounterReader: &mockEncounterReader{
 					ctx: dummyCtx,
@@ -480,13 +497,39 @@ func TestAPI_UpdateEncounter(t *testing.T) {
 				encounterUpdater: &mockEncounterUpdater{retEnc: dummyEncounter2},
 			},
 			args: dummyArgs,
-			want: dummyAPIError,
+			want: dummyAPIError(http.StatusNotFound),
 			wantMocks: mocks{
 				encounterReader: &mockEncounterReader{
 					ctx: dummyCtx,
 					id:  dummyEncounter1.ID,
 					enc: dummyEncounter2,
 					err: dummyError,
+				},
+				encounterUpdater: &mockEncounterUpdater{
+					retEnc: dummyEncounter2,
+				},
+			},
+		},
+		{
+			name: "update encounter edit id",
+			mocks: mocks{
+				encounterReader:  &mockEncounterReader{enc: dummyEncounter2},
+				encounterUpdater: &mockEncounterUpdater{retEnc: dummyEncounter2},
+			},
+			args: args{
+				ctx:    dummyCtx,
+				userID: dummyUser1.ID,
+				encID:  dummyEncounter2.ID,
+				enc:    dummyEncounter1,
+			},
+			want: api.Result{
+				Status: http.StatusUnprocessableEntity,
+				Name:   "error",
+				Value:  "cannot edit id",
+			},
+			wantMocks: mocks{
+				encounterReader: &mockEncounterReader{
+					enc: dummyEncounter2,
 				},
 				encounterUpdater: &mockEncounterUpdater{
 					retEnc: dummyEncounter2,
@@ -500,10 +543,11 @@ func TestAPI_UpdateEncounter(t *testing.T) {
 			assert.Equalf(
 				t,
 				tt.want,
-				a.UpdateEncounter(tt.args.ctx, tt.args.userID, tt.args.enc),
-				"UpdateEncounter(%v, %v, %v)",
+				a.UpdateEncounter(tt.args.ctx, tt.args.userID, tt.args.encID, tt.args.enc),
+				"UpdateEncounter(%v, %v, %v, %v)",
 				tt.args.ctx,
 				tt.args.userID,
+				tt.args.encID,
 				tt.args.enc,
 			)
 			assert.Equal(t, tt.wantMocks, tt.mocks)
@@ -536,7 +580,8 @@ func TestAPI_DeleteEncounter(t *testing.T) {
 				encounterDeleter: &mockEncounterDeleter{},
 			},
 			args: dummyArgs,
-			want: api.Result{Name: "id", Value: dummyEncounter1.ID},
+			want: api.Result{
+				Status: http.StatusOK, Name: "id", Value: dummyEncounter1.ID},
 			wantMocks: mocks{
 				encounterReader: &mockEncounterReader{
 					ctx: dummyCtx,
@@ -556,7 +601,7 @@ func TestAPI_DeleteEncounter(t *testing.T) {
 				encounterDeleter: &mockEncounterDeleter{},
 			},
 			args: dummyArgs,
-			want: dummyAPIError,
+			want: dummyAPIError(http.StatusNotFound),
 			wantMocks: mocks{
 				encounterReader: &mockEncounterReader{
 					ctx: dummyCtx,
@@ -595,7 +640,7 @@ func TestAPI_DeleteEncounter(t *testing.T) {
 				encounterDeleter: &mockEncounterDeleter{err: dummyError},
 			},
 			args: dummyArgs,
-			want: dummyAPIError,
+			want: dummyAPIError(http.StatusNotFound),
 			wantMocks: mocks{
 				encounterReader: &mockEncounterReader{
 					ctx: dummyCtx,
@@ -666,7 +711,7 @@ func TestAPI_ConfirmEncounter(t *testing.T) {
 				encounterReader:    &mockEncounterReader{enc: dummyEncounter1},
 				encounterConfirmer: &mockEncounterConfirmer{},
 			},
-			want: api.Result{Name: "id", Value: dummyEncounter1.ID},
+			want: api.Result{Status: http.StatusOK, Name: "id", Value: dummyEncounter1.ID},
 			wantMocks: mocks{
 				encounterReader: &mockEncounterReader{
 					ctx: dummyCtx,
@@ -712,7 +757,7 @@ func TestAPI_ConfirmEncounter(t *testing.T) {
 				encounterReader:    &mockEncounterReader{enc: dummyEncounter1},
 				encounterConfirmer: &mockEncounterConfirmer{},
 			},
-			want: api.Result{Name: "error", Value: "user is already confirmed", Err: errors.New("user is already confirmed")},
+			want: api.Result{Status: http.StatusUnprocessableEntity, Name: "error", Value: "user is already confirmed"},
 			wantMocks: mocks{
 				encounterReader: &mockEncounterReader{
 					ctx: dummyCtx,
@@ -729,7 +774,7 @@ func TestAPI_ConfirmEncounter(t *testing.T) {
 				encounterReader:    &mockEncounterReader{enc: dummyEncounter1},
 				encounterConfirmer: &mockEncounterConfirmer{err: dummyError},
 			},
-			want: dummyAPIError,
+			want: dummyAPIError(http.StatusNotFound),
 			wantMocks: mocks{
 				encounterReader: &mockEncounterReader{
 					ctx: dummyCtx,
@@ -751,7 +796,7 @@ func TestAPI_ConfirmEncounter(t *testing.T) {
 				encounterReader:    &mockEncounterReader{enc: dummyEncounter1, err: dummyError},
 				encounterConfirmer: &mockEncounterConfirmer{},
 			},
-			want: dummyAPIError,
+			want: dummyAPIError(http.StatusNotFound),
 			wantMocks: mocks{
 				encounterReader: &mockEncounterReader{
 					ctx: dummyCtx,
@@ -769,7 +814,7 @@ func TestAPI_ConfirmEncounter(t *testing.T) {
 			assert.Equalf(
 				t,
 				tt.want,
-				a.ConfirmEncounter(tt.args.ctx, tt.args.encID, tt.args.userID),
+				a.ConfirmEncounter(tt.args.ctx, tt.args.userID, tt.args.encID),
 				"ConfirmEncounter(%v, %v, %v)",
 				tt.args.ctx,
 				tt.args.encID,

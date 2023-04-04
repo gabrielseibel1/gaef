@@ -3,13 +3,27 @@ package api
 import (
 	"context"
 	"errors"
+	"github.com/gabrielseibel1/gaef/encounter/server"
 	"github.com/gabrielseibel1/gaef/types"
+	"net/http"
 )
 
 type Result struct {
-	Name  string
-	Value any
-	Err   error
+	Status int
+	Name   string
+	Value  any
+}
+
+func (r Result) S() int {
+	return r.Status
+}
+
+func (r Result) K() string {
+	return r.Name
+}
+
+func (r Result) V() any {
+	return r.Value
 }
 
 type API struct {
@@ -42,93 +56,98 @@ func New(
 	}
 }
 
-func (a API) CreateEncounter(ctx context.Context, token string, e types.Encounter) Result {
+func (a API) CreateEncounter(ctx context.Context, token string, e types.Encounter) server.Result {
 	ok, err := a.userIsLeaderRemote(ctx, token, e)
 	if err != nil {
-		return errResult(err)
+		return errResult(http.StatusUnauthorized, err)
 	}
 	if !ok {
-		return errResult(errUnauthorized)
+		return errResult(http.StatusUnauthorized, errUnauthorized)
 	}
 
 	id, err := a.encounterCreator.CreateEncounter(ctx, e)
 	if err != nil {
-		return errResult(err)
+		return errResult(http.StatusUnprocessableEntity, err)
 	}
 	return okResult(idName, id)
 }
 
-func (a API) ReadUserEncounters(ctx context.Context, userID string) Result {
+func (a API) ReadUserEncounters(ctx context.Context, userID string) server.Result {
 	encs, err := a.userEncountersReader.ReadUserEncounters(ctx, userID)
 	if err != nil {
-		return errResult(err)
+		return errResult(http.StatusNotFound, err)
 	}
 	return okResult(encountersName, encs)
 }
 
-func (a API) ReadEncounter(ctx context.Context, encID, userID string) Result {
+func (a API) ReadEncounter(ctx context.Context, userID, encID string) server.Result {
 	enc, err := a.encounterReader.ReadEncounter(ctx, encID)
 	if err != nil {
-		return errResult(err)
+		return errResult(http.StatusNotFound, err)
 	}
 
 	if !userIsInvited(enc, userID) {
-		return errResult(errUnauthorized)
+		return errResult(http.StatusUnauthorized, errUnauthorized)
 	}
 
 	return okResult(encounterName, enc)
 }
 
-func (a API) UpdateEncounter(ctx context.Context, userID string, e types.Encounter) Result {
-	enc, err := a.encounterReader.ReadEncounter(ctx, e.ID)
+func (a API) UpdateEncounter(ctx context.Context, userID string, encID string, e types.Encounter) server.Result {
+	// TODO test
+	if encID != e.ID {
+		return errResult(http.StatusUnprocessableEntity, errors.New("cannot edit id"))
+	}
+
+	enc, err := a.encounterReader.ReadEncounter(ctx, encID)
 	if err != nil {
-		return errResult(err)
+		return errResult(http.StatusNotFound, err)
 	}
 
 	if !userIsLeader(enc, userID) {
-		return errResult(errUnauthorized)
+		return errResult(http.StatusUnauthorized, errUnauthorized)
 	}
 
 	enc, err = a.encounterUpdater.UpdateEncounter(ctx, e)
 	if err != nil {
-		return errResult(err)
+		return errResult(http.StatusNotFound, err)
 	}
 	return okResult(encounterName, enc)
 }
 
-func (a API) DeleteEncounter(ctx context.Context, userID, encID string) Result {
+func (a API) DeleteEncounter(ctx context.Context, userID, encID string) server.Result {
 	enc, err := a.encounterReader.ReadEncounter(ctx, encID)
 	if err != nil {
-		return errResult(err)
+		return errResult(http.StatusNotFound, err)
 	}
 
 	if !userIsLeader(enc, userID) {
-		return errResult(errUnauthorized)
+		return errResult(http.StatusUnauthorized, errUnauthorized)
 	}
 
 	if err := a.encounterDeleter.DeleteEncounter(ctx, encID); err != nil {
-		return errResult(err)
+		return errResult(http.StatusNotFound, err)
 	}
 	return okResult(idName, encID)
 }
 
-func (a API) ConfirmEncounter(ctx context.Context, encID string, userID string) Result {
+func (a API) ConfirmEncounter(ctx context.Context, userID string, encID string) server.Result {
 	enc, err := a.encounterReader.ReadEncounter(ctx, encID)
 	if err != nil {
-		return errResult(err)
+		return errResult(http.StatusNotFound, err)
 	}
 
 	user, err := getInvitedUser(enc, userID)
 	if err != nil {
-		return errResult(errUnauthorized)
+		return errResult(http.StatusUnauthorized, errUnauthorized)
 	}
 
 	if userIsConfirmed(enc, userID) {
-		return errResult(errors.New("user is already confirmed"))
+		return errResult(http.StatusUnprocessableEntity, errors.New("user is already confirmed"))
 	}
 
 	if err := a.encounterConfirmer.ConfirmEncounter(ctx, encID, user); err != nil {
-		return errResult(err)
+		return errResult(http.StatusNotFound, err)
 	}
 	return okResult(idName, encID)
 }
@@ -215,11 +234,11 @@ func userIsLeader(enc types.Encounter, userID string) bool {
 }
 
 func okResult(name string, value any) Result {
-	return Result{Name: name, Value: value}
+	return Result{Status: http.StatusOK, Name: name, Value: value}
 }
 
-func errResult(err error) Result {
-	return Result{Name: errorName, Value: err.Error(), Err: err}
+func errResult(status int, err error) Result {
+	return Result{Status: status, Name: errorName, Value: err.Error()}
 }
 
 var (
