@@ -950,9 +950,9 @@ type mockUserEncountersReader struct {
 	err    error
 }
 
-func (m *mockUserEncountersReader) ReadUserEncounters(ctx context.Context, token string) ([]types.Encounter, error) {
+func (m *mockUserEncountersReader) ReadUserEncounters(ctx context.Context, userID string) ([]types.Encounter, error) {
 	m.ctx = ctx
-	m.userID = token
+	m.userID = userID
 	return m.encs, m.err
 }
 

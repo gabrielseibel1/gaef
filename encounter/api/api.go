@@ -180,7 +180,7 @@ type EncounterReader interface {
 }
 
 type UserEncountersReader interface {
-	ReadUserEncounters(ctx context.Context, token string) ([]types.Encounter, error)
+	ReadUserEncounters(ctx context.Context, userID string) ([]types.Encounter, error)
 }
 
 type EncounterUpdater interface {
