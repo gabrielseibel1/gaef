@@ -11,9 +11,8 @@ FROM scratch
 
 WORKDIR /app
 
-COPY --from=build /build/group/.env .
 COPY --from=build /build/group/server .
 
 EXPOSE 8080
 
-ENTRYPOINT [ "/app/server","--production=true" ]
+ENTRYPOINT [ "/app/server" ]

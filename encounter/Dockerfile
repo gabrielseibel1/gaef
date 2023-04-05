@@ -11,9 +11,8 @@ FROM scratch
 
 WORKDIR /app
 
-COPY --from=build /build/encounter/.env .
 COPY --from=build /build/encounter/webserver .
 
 EXPOSE 8080
 
-ENTRYPOINT [ "/app/webserver","--production=true" ]
+ENTRYPOINT [ "/app/webserver" ]

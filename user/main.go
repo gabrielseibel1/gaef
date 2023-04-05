@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	"github.com/gabrielseibel1/gaef/user/hasher"
 	"log"
@@ -12,7 +11,6 @@ import (
 	"github.com/gabrielseibel1/gaef/user/handler"
 	"github.com/gabrielseibel1/gaef/user/store"
 	"github.com/gin-gonic/gin"
-	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
@@ -55,33 +53,24 @@ type handlerGenerator struct {
 // implementation
 
 func main() {
-	// read command-line args
-	var prod bool
-	flag.BoolVar(&prod, "production", false, "indicates the service is used for production")
-	flag.Parse()
-
 	// read environment variables
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file")
-	}
-	var jwtSecret string
-	if prod {
-		gin.SetMode(gin.ReleaseMode)
-		jwtSecret = os.Getenv("JWT_SECRET")
-	} else {
-		jwtSecret = "debug-jwt-secret"
-	}
+	jwtSecret := os.Getenv("JWT_SECRET")
 	port := os.Getenv("PORT")
 	dbURI := os.Getenv("MONGODB_URI")
 	dbName := os.Getenv("MONGODB_DATABASE")
 	collectionName := os.Getenv("MONGODB_COLLECTION")
 
-	// TODO: secure connection to mongo with user/password
 	// connect to mongoDB
+	serverAPIOptions := options.ServerAPI(options.ServerAPIVersion1)
+	clientOptions := options.Client().
+		ApplyURI(dbURI).
+		SetServerAPIOptions(serverAPIOptions)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(dbURI))
+	client, err := mongo.Connect(ctx, clientOptions)
+	if err != nil {
+		log.Fatal(err)
+	}
 	defer func() {
 		if err = client.Disconnect(ctx); err != nil {
 			panic(err)

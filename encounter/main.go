@@ -10,7 +10,6 @@ import (
 	"github.com/gabrielseibel1/gaef/encounter/server"
 	"github.com/gabrielseibel1/gaef/encounter/store"
 	"github.com/gin-gonic/gin"
-	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
@@ -21,9 +20,6 @@ import (
 
 func main() {
 	// read environment variables
-	if err := godotenv.Load(); err != nil {
-		log.Fatal("Error loading .env file")
-	}
 	port := os.Getenv("PORT")
 	userServiceURL := os.Getenv("USER_SERVICE_URL")
 	groupServiceURL := os.Getenv("GROUP_SERVICE_URL")
@@ -31,10 +27,17 @@ func main() {
 	dbName := os.Getenv("MONGODB_DATABASE")
 	collectionName := os.Getenv("MONGODB_COLLECTION")
 
-	// connect to mongoDB TODO: secure connection to mongo with user/password
+	// connect to mongoDB
+	serverAPIOptions := options.ServerAPI(options.ServerAPIVersion1)
+	clientOptions := options.Client().
+		ApplyURI(dbURI).
+		SetServerAPIOptions(serverAPIOptions)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(dbURI))
+	client, err := mongo.Connect(ctx, clientOptions)
+	if err != nil {
+		log.Fatal(err)
+	}
 	defer func() {
 		if err = client.Disconnect(ctx); err != nil {
 			panic(err)
