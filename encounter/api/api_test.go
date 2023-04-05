@@ -990,7 +990,7 @@ type mockLeaderChecker struct {
 	err      error
 }
 
-func (m *mockLeaderChecker) IsLeader(ctx context.Context, token string, groupID string) (bool, error) {
+func (m *mockLeaderChecker) IsGroupLeader(ctx context.Context, token string, groupID string) (bool, error) {
 	m.ctx = ctx
 	m.token = token
 	m.groupID = groupID

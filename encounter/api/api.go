@@ -172,7 +172,7 @@ type EncounterCreator interface {
 }
 
 type LeaderChecker interface {
-	IsLeader(ctx context.Context, token string, groupID string) (bool, error)
+	IsGroupLeader(ctx context.Context, token string, groupID string) (bool, error)
 }
 
 type EncounterReader interface {
@@ -202,7 +202,7 @@ type EncounterDecliner interface {
 func (a API) userIsLeaderRemote(ctx context.Context, token string, enc types.Encounter) (bool, error) {
 	var anyErr error
 	for _, group := range enc.Groups {
-		ok, err := a.leaderChecker.IsLeader(ctx, token, group.ID)
+		ok, err := a.leaderChecker.IsGroupLeader(ctx, token, group.ID)
 		if err != nil {
 			anyErr = err
 			continue
