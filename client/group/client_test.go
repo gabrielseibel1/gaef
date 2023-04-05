@@ -18,15 +18,15 @@ func TestClient_CRUD_Localhost8081(t *testing.T) {
 	groupsClient := group.Client{URL: "http://localhost:8081/api/v0/groups/"}
 
 	// create group with three users
-	user1ID, err := usersClient.SignUp(ctx, "1", "1@gmail.com", "test1231")
+	user1ID, err := usersClient.SignUp(ctx, types.User{Name: "1", Email: "1@gmail.com"}, "test1231")
 	if err != nil {
 		t.Fatalf("usersClient.SignUp = err: %s", err.Error())
 	}
-	user2ID, err := usersClient.SignUp(ctx, "2", "2@gmail.com", "test1232")
+	user2ID, err := usersClient.SignUp(ctx, types.User{Name: "2", Email: "2@gmail.com"}, "test1232")
 	if err != nil {
 		t.Fatalf("usersClient.SignUp = err: %s", err.Error())
 	}
-	user3ID, err := usersClient.SignUp(ctx, "3", "3@gmail.com", "test1233")
+	user3ID, err := usersClient.SignUp(ctx, types.User{Name: "3", Email: "3@gmail.com"}, "test1233")
 	if err != nil {
 		t.Fatalf("usersClient.SignUp = err: %s", err.Error())
 	}

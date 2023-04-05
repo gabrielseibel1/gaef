@@ -19,7 +19,7 @@ func TestClient_Localhost8083(t *testing.T) {
 	encountersClient := encounter.Client{URL: "http://localhost:8083/api/v0/encounters/"}
 
 	// create user and group
-	user1ID, err := usersClient.SignUp(ctx, "1", "enctest_1@gmail.com", "test1231")
+	user1ID, err := usersClient.SignUp(ctx, types.User{Name: "1", Email: "enctest_1@gmail.com"}, "test1231")
 	assert.Nil(t, err)
 	token1, err := usersClient.Login(ctx, "enctest_1@gmail.com", "test1231")
 	assert.Nil(t, err)

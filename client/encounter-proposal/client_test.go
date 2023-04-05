@@ -21,11 +21,11 @@ func TestClient_Localhost8082(t *testing.T) {
 	// create two users and three groups:
 	// user 1 - leads 1 group (g1)
 	// user 2 - leads 2 groups (g2, g3)
-	user1ID, err := usersClient.SignUp(ctx, "1", "eptest_1@gmail.com", "test1231")
+	user1ID, err := usersClient.SignUp(ctx, types.User{Name: "1", Email: "eptest_1@gmail.com"}, "test1231")
 	if err != nil {
 		t.Fatalf("usersClient.SignUp = err: %s", err.Error())
 	}
-	user2ID, err := usersClient.SignUp(ctx, "2", "eptest_2@gmail.com", "test1232")
+	user2ID, err := usersClient.SignUp(ctx, types.User{Name: "2", Email: "eptest_2@gmail.com"}, "test1232")
 	if err != nil {
 		t.Fatalf("usersClient.SignUp = err: %s", err.Error())
 	}

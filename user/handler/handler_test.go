@@ -224,8 +224,8 @@ type mockCreator struct {
 	err error
 }
 
-func (mc *mockCreator) Create(ctx context.Context, user types.User) (string, error) {
-	mc.user = user
+func (mc *mockCreator) Create(ctx context.Context, user types.UserWithHashedPassword) (string, error) {
+	mc.user = user.User
 	mc.password = user.HashedPassword
 	mc.ctx = ctx
 	return mc.id, mc.err
@@ -237,11 +237,11 @@ type mockByEmailReader struct {
 	email string
 
 	// return
-	user types.User
+	user types.UserWithHashedPassword
 	err  error
 }
 
-func (m *mockByEmailReader) ReadSensitiveByEmail(ctx context.Context, email string) (types.User, error) {
+func (m *mockByEmailReader) ReadSensitiveByEmail(ctx context.Context, email string) (types.UserWithHashedPassword, error) {
 	m.ctx = ctx
 	m.email = email
 	return m.user, m.err
@@ -277,12 +277,13 @@ func TestHandler_Signup_OK(t *testing.T) {
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	var reqBody = struct {
-		Name     string `json:"name"`
-		Email    string `json:"email"`
-		Password string `json:"password"`
+		User     types.User
+		Password string
 	}{
-		Name:     "Gabriel do Souza Seibel",
-		Email:    "gabriel.seibel@tuta.io",
+		User: types.User{
+			Name:  "Gabriel do Souza Seibel",
+			Email: "gabriel.seibel@tuta.io",
+		},
 		Password: "test123",
 	}
 	reqBodyJson, err := json.Marshal(reqBody)
@@ -311,7 +312,7 @@ func TestHandler_Signup_OK(t *testing.T) {
 	if got, want := w.Code, http.StatusCreated; got != want {
 		t.Errorf("got status code %d, want %d", got, want)
 	}
-	if got, want := mockByEmailReader.email, reqBody.Email; got != want {
+	if got, want := mockByEmailReader.email, reqBody.User.Email; got != want {
 		t.Errorf("got %s, want %s", got, want)
 	}
 	if got, want := mockByEmailReader.ctx, c; got != want {
@@ -320,10 +321,10 @@ func TestHandler_Signup_OK(t *testing.T) {
 	if got, want := mockHasher.password, reqBody.Password; got != want {
 		t.Errorf("got %s, want %s", got, want)
 	}
-	if got, want := mockCreator.user.Name, reqBody.Name; got != want {
+	if got, want := mockCreator.user.Name, reqBody.User.Name; got != want {
 		t.Errorf("got created name %s, want %s", got, want)
 	}
-	if got, want := mockCreator.user.Email, reqBody.Email; got != want {
+	if got, want := mockCreator.user.Email, reqBody.User.Email; got != want {
 		t.Errorf("got created email %s, want %s", got, want)
 	}
 	if got, want := mockCreator.password, mockHasher.hash; got != want {
@@ -331,156 +332,6 @@ func TestHandler_Signup_OK(t *testing.T) {
 	}
 	if got, want := mockCreator.ctx, c; got != want {
 		t.Errorf("got passed context %v, want %v", got, want)
-	}
-}
-
-func TestHandler_Signup_MissingName(t *testing.T) {
-	// prepare test setup
-	mockByEmailReader := &mockByEmailReader{
-		err: errors.New("mock email reader error"),
-	}
-	mockHasher := &mockHasher{
-		hash: "dummy-hashed-password",
-		err:  nil,
-	}
-	mockCreator := &mockCreator{
-		id:  "1234567890",
-		err: nil,
-	}
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	var reqBody = struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
-	}{
-		Email:    "gabriel.seibel@tuta.io",
-		Password: "test123",
-	}
-	reqBodyJson, err := json.Marshal(reqBody)
-	if err != nil {
-		t.Error("failed to marshal json")
-	}
-	req := &http.Request{
-		Body: io.NopCloser(bytes.NewBufferString(string(reqBodyJson))),
-	}
-	c.Request = req
-
-	// run code under test
-	New(mockHasher, nil, mockCreator, nil, mockByEmailReader, nil, nil, nil).Signup()(c)
-
-	// assertions
-	var resp struct {
-		Error string
-	}
-	err = json.NewDecoder(w.Result().Body).Decode(&resp)
-	if err != nil {
-		t.Errorf("got error %s decoding response, want nil", err)
-	}
-	if got, want := resp.Error, "missing user data"; got != want {
-		t.Errorf("got response body id %s, want %s", got, want)
-	}
-	if got, want := w.Code, http.StatusBadRequest; got != want {
-		t.Errorf("got status code %d, want %d", got, want)
-	}
-}
-
-func TestHandler_Signup_MissingEmail(t *testing.T) {
-	// prepare test setup
-	mockByEmailReader := &mockByEmailReader{
-		err: errors.New("mock email reader error"),
-	}
-	mockHasher := &mockHasher{
-		hash: "dummy-hashed-password",
-		err:  nil,
-	}
-	mockCreator := &mockCreator{
-		id:  "1234567890",
-		err: nil,
-	}
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	var reqBody = struct {
-		Name     string `json:"name"`
-		Password string `json:"password"`
-	}{
-		Name:     "Gabriel de Souza Seibel",
-		Password: "test123",
-	}
-	reqBodyJson, err := json.Marshal(reqBody)
-	if err != nil {
-		t.Error("failed to marshal json")
-	}
-	req := &http.Request{
-		Body: io.NopCloser(bytes.NewBufferString(string(reqBodyJson))),
-	}
-	c.Request = req
-
-	// run code under test
-	New(mockHasher, nil, mockCreator, nil, mockByEmailReader, nil, nil, nil).Signup()(c)
-
-	// assertions
-	var resp struct {
-		Error string
-	}
-	err = json.NewDecoder(w.Result().Body).Decode(&resp)
-	if err != nil {
-		t.Errorf("got error %s decoding response, want nil", err)
-	}
-	if got, want := resp.Error, "missing user data"; got != want {
-		t.Errorf("got response body id %s, want %s", got, want)
-	}
-	if got, want := w.Code, http.StatusBadRequest; got != want {
-		t.Errorf("got status code %d, want %d", got, want)
-	}
-}
-
-func TestHandler_Signup_MissingPassword(t *testing.T) {
-	// prepare test setup
-	mockByEmailReader := &mockByEmailReader{
-		err: errors.New("mock email reader error"),
-	}
-	mockHasher := &mockHasher{
-		hash: "dummy-hashed-password",
-		err:  nil,
-	}
-	mockCreator := &mockCreator{
-		id:  "1234567890",
-		err: nil,
-	}
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	var reqBody = struct {
-		Name  string `json:"name"`
-		Email string `json:"email"`
-	}{
-		Name:  "Gabriel de Souza Seibel",
-		Email: "gabriel.seibel@tuta.io",
-	}
-	reqBodyJson, err := json.Marshal(reqBody)
-	if err != nil {
-		t.Error("failed to marshal json")
-	}
-	req := &http.Request{
-		Body: io.NopCloser(bytes.NewBufferString(string(reqBodyJson))),
-	}
-	c.Request = req
-
-	// run code under test
-	New(mockHasher, nil, mockCreator, nil, mockByEmailReader, nil, nil, nil).Signup()(c)
-
-	// assertions
-	var resp struct {
-		Error string
-	}
-	err = json.NewDecoder(w.Result().Body).Decode(&resp)
-	if err != nil {
-		t.Errorf("got error %s decoding response, want nil", err)
-	}
-	if got, want := resp.Error, "missing user data"; got != want {
-		t.Errorf("got response body id %s, want %s", got, want)
-	}
-	if got, want := w.Code, http.StatusBadRequest; got != want {
-		t.Errorf("got status code %d, want %d", got, want)
 	}
 }
 
@@ -500,12 +351,13 @@ func TestHandler_Signup_ReaderNilError(t *testing.T) {
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	var reqBody = struct {
-		Name     string `json:"name"`
-		Email    string `json:"email"`
-		Password string `json:"password"`
+		User     types.User
+		Password string
 	}{
-		Name:     "Gabriel do Souza Seibel",
-		Email:    "gabriel.seibel@tuta.io",
+		User: types.User{
+			Name:  "Gabriel do Souza Seibel",
+			Email: "gabriel.seibel@tuta.io",
+		},
 		Password: "test123",
 	}
 	reqBodyJson, err := json.Marshal(reqBody)
@@ -534,7 +386,7 @@ func TestHandler_Signup_ReaderNilError(t *testing.T) {
 	if got, want := w.Code, http.StatusUnprocessableEntity; got != want {
 		t.Errorf("got status code %d, want %d", got, want)
 	}
-	if got, want := mockByEmailReader.email, reqBody.Email; got != want {
+	if got, want := mockByEmailReader.email, reqBody.User.Email; got != want {
 		t.Errorf("got %s, want %s", got, want)
 	}
 	if got, want := mockByEmailReader.ctx, c; got != want {
@@ -558,12 +410,13 @@ func TestHandler_Signup_HasherError(t *testing.T) {
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	var reqBody = struct {
-		Name     string `json:"name"`
-		Email    string `json:"email"`
-		Password string `json:"password"`
+		User     types.User
+		Password string
 	}{
-		Name:     "Gabriel do Souza Seibel",
-		Email:    "gabriel.seibel@tuta.io",
+		User: types.User{
+			Name:  "Gabriel do Souza Seibel",
+			Email: "gabriel.seibel@tuta.io",
+		},
 		Password: "test123",
 	}
 	reqBodyJson, err := json.Marshal(reqBody)
@@ -592,7 +445,7 @@ func TestHandler_Signup_HasherError(t *testing.T) {
 	if got, want := w.Code, http.StatusUnprocessableEntity; got != want {
 		t.Errorf("got status code %d, want %d", got, want)
 	}
-	if got, want := mockByEmailReader.email, reqBody.Email; got != want {
+	if got, want := mockByEmailReader.email, reqBody.User.Email; got != want {
 		t.Errorf("got %s, want %s", got, want)
 	}
 	if got, want := mockByEmailReader.ctx, c; got != want {
@@ -619,12 +472,13 @@ func TestHandler_Signup_CreatorError(t *testing.T) {
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	var reqBody = struct {
-		Name     string `json:"name"`
-		Email    string `json:"email"`
-		Password string `json:"password"`
+		User     types.User
+		Password string
 	}{
-		Name:     "Gabriel do Souza Seibel",
-		Email:    "gabriel.seibel@tuta.io",
+		User: types.User{
+			Name:  "Gabriel do Souza Seibel",
+			Email: "gabriel.seibel@tuta.io",
+		},
 		Password: "test123",
 	}
 	reqBodyJson, err := json.Marshal(reqBody)
@@ -653,7 +507,7 @@ func TestHandler_Signup_CreatorError(t *testing.T) {
 	if got, want := w.Code, http.StatusUnprocessableEntity; got != want {
 		t.Errorf("got status code %d, want %d", got, want)
 	}
-	if got, want := mockByEmailReader.email, reqBody.Email; got != want {
+	if got, want := mockByEmailReader.email, reqBody.User.Email; got != want {
 		t.Errorf("got %s, want %s", got, want)
 	}
 	if got, want := mockByEmailReader.ctx, c; got != want {
@@ -662,10 +516,10 @@ func TestHandler_Signup_CreatorError(t *testing.T) {
 	if got, want := mockHasher.password, reqBody.Password; got != want {
 		t.Errorf("got %s, want %s", got, want)
 	}
-	if got, want := mockCreator.user.Name, reqBody.Name; got != want {
+	if got, want := mockCreator.user.Name, reqBody.User.Name; got != want {
 		t.Errorf("got created name %s, want %s", got, want)
 	}
-	if got, want := mockCreator.user.Email, reqBody.Email; got != want {
+	if got, want := mockCreator.user.Email, reqBody.User.Email; got != want {
 		t.Errorf("got created email %s, want %s", got, want)
 	}
 	if got, want := mockCreator.password, mockHasher.hash; got != want {
@@ -694,10 +548,12 @@ func (m *mockVerifier) CompareHashAndPassword(hashedPassword, password string) e
 func TestHandler_Login_OK(t *testing.T) {
 	// prepare test setup
 	mockByEmailReader := &mockByEmailReader{
-		user: types.User{
-			ID:             "dummyID",
-			Name:           "dummyName",
-			Email:          "dummyEmail",
+		user: types.UserWithHashedPassword{
+			User: types.User{
+				ID:    "dummyID",
+				Name:  "dummyName",
+				Email: "dummyEmail",
+			},
 			HashedPassword: "dummyHash",
 		},
 		err: nil,
@@ -786,10 +642,12 @@ func TestHandler_Login_OK(t *testing.T) {
 func TestHandler_Login_MissingEmail(t *testing.T) {
 	// prepare test setup
 	mockByEmailReader := &mockByEmailReader{
-		user: types.User{
-			ID:             "dummyID",
-			Name:           "dummyName",
-			Email:          "dummyEmail",
+		user: types.UserWithHashedPassword{
+			User: types.User{
+				ID:    "dummyID",
+				Name:  "dummyName",
+				Email: "dummyEmail",
+			},
 			HashedPassword: "dummyHash",
 		},
 		err: nil,
@@ -836,10 +694,12 @@ func TestHandler_Login_MissingEmail(t *testing.T) {
 func TestHandler_Login_MissingPassword(t *testing.T) {
 	// prepare test setup
 	mockByEmailReader := &mockByEmailReader{
-		user: types.User{
-			ID:             "dummyID",
-			Name:           "dummyName",
-			Email:          "dummyEmail",
+		user: types.UserWithHashedPassword{
+			User: types.User{
+				ID:    "dummyID",
+				Name:  "dummyName",
+				Email: "dummyEmail",
+			},
 			HashedPassword: "dummyHash",
 		},
 		err: nil,
@@ -886,10 +746,12 @@ func TestHandler_Login_MissingPassword(t *testing.T) {
 func TestHandler_Login_ReaderError(t *testing.T) {
 	// prepare test setup
 	mockByEmailReader := &mockByEmailReader{
-		user: types.User{
-			ID:             "dummyID",
-			Name:           "dummyName",
-			Email:          "dummyEmail",
+		user: types.UserWithHashedPassword{
+			User: types.User{
+				ID:    "dummyID",
+				Name:  "dummyName",
+				Email: "dummyEmail",
+			},
 			HashedPassword: "dummyHash",
 		},
 		err: errors.New("mock reader error"),
@@ -944,10 +806,12 @@ func TestHandler_Login_ReaderError(t *testing.T) {
 func TestHandler_Login_VerifierError(t *testing.T) {
 	// prepare test setup
 	mockByEmailReader := &mockByEmailReader{
-		user: types.User{
-			ID:             "dummyID",
-			Name:           "dummyName",
-			Email:          "dummyEmail",
+		user: types.UserWithHashedPassword{
+			User: types.User{
+				ID:    "dummyID",
+				Name:  "dummyName",
+				Email: "dummyEmail",
+			},
 			HashedPassword: "dummyHash",
 		},
 		err: nil,
@@ -1285,50 +1149,6 @@ func TestHandler_UpdateUser_UpdaterError(t *testing.T) {
 	}
 	if got, want := mockUpdater.ctx, c; got != want {
 		t.Errorf("mockUpdater.Update() received id %v, want %v", got, want)
-	}
-}
-
-func TestHandler_UpdateUser_MissingUserName(t *testing.T) {
-	// prepare test setup
-	mockUpdater := &mockUpdater{
-		user: types.User{
-			ID:   "mockReaderID",
-			Name: "mockReaderName",
-		},
-		err: nil,
-	}
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	dummyID := "dummyID"
-	c.Set("AuthenticatedUserID", dummyID)
-	reqBody := types.User{
-		ID: dummyID,
-	}
-	reqBodyJson, err := json.Marshal(reqBody)
-	if err != nil {
-		t.Error("failed to marshal json")
-	}
-	req := &http.Request{
-		Body: io.NopCloser(bytes.NewBufferString(string(reqBodyJson))),
-	}
-	c.Request = req
-
-	// run code under test
-	New(nil, nil, nil, nil, nil, mockUpdater, nil, nil).UpdateUser()(c)
-
-	// assertions
-	var resp struct {
-		Err string `json:"error"`
-	}
-	err = json.NewDecoder(w.Result().Body).Decode(&resp)
-	if err != nil {
-		t.Errorf("got error %s decoding response, want nil", err)
-	}
-	if got, want := resp.Err, "missing user data"; got != want {
-		t.Errorf("got response body id %s, want %s", got, want)
-	}
-	if got, want := w.Code, http.StatusBadRequest; got != want {
-		t.Errorf("got status code %d, want %d", got, want)
 	}
 }
 

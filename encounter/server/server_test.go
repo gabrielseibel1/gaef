@@ -310,11 +310,9 @@ var (
 	}
 	dummyToken = "dummy-token"
 	dummyUser1 = types.User{
-		ID:             "dummy-user-id-1",
-		Name:           "dummy-user-name-1",
-		Email:          "dummy-user-email-1",
-		Password:       "dummy-user-password-1",
-		HashedPassword: "dummy-user-hashed-1",
+		ID:    "dummy-user-id-1",
+		Name:  "dummy-user-name-1",
+		Email: "dummy-user-email-1",
 	}
 	dummyGroup1 = types.Group{
 		ID:          "dummy-group-id-1",

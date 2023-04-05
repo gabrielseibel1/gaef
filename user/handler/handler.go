@@ -20,10 +20,10 @@ type PasswordVerifier interface {
 	CompareHashAndPassword(hashedPassword, password string) error
 }
 type Creator interface {
-	Create(ctx context.Context, user types.User) (string, error)
+	Create(ctx context.Context, user types.UserWithHashedPassword) (string, error)
 }
 type ByEmailReader interface {
-	ReadSensitiveByEmail(ctx context.Context, email string) (types.User, error)
+	ReadSensitiveByEmail(ctx context.Context, email string) (types.UserWithHashedPassword, error)
 }
 type ByIDReader interface {
 	ReadByID(ctx context.Context, id string) (types.User, error)
@@ -122,19 +122,14 @@ func (sh Handler) JWTAuthMiddleware() gin.HandlerFunc {
 func (sh Handler) Signup() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		var json struct {
-			Name     string `json:"name" binding:"required"`
-			Email    string `json:"email" binding:"required"`
-			Password string `json:"password" binding:"required"` // TODO: password requirements validation
+			User     types.User `json:"user" binding:"required"`
+			Password string     `json:"password" binding:"required"`
 		}
 		if err := ctx.ShouldBindJSON(&json); err != nil {
 			ctx.JSON(http.StatusBadRequest, messageErrorMissingUserData)
 			return
 		}
-		user := types.User{
-			Name:     json.Name,
-			Email:    json.Email,
-			Password: json.Password,
-		}
+		user := types.UserWithHashedPassword{User: json.User}
 
 		_, err := sh.byEmailReader.ReadSensitiveByEmail(ctx, user.Email)
 		if err == nil {
@@ -142,7 +137,7 @@ func (sh Handler) Signup() gin.HandlerFunc {
 			return
 		}
 
-		user.HashedPassword, err = sh.hasher.GenerateFromPassword(user.Password)
+		user.HashedPassword, err = sh.hasher.GenerateFromPassword(json.Password)
 		if err != nil {
 			ctx.JSON(http.StatusUnprocessableEntity, gin.H{"error": "bad password"})
 			return
@@ -220,15 +215,11 @@ func (sh Handler) UpdateUser() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		id := ctx.GetString(paramKeyAuthenticatedUserID)
 
-		var json struct {
-			ID   string `json:"id" binding:"required"`
-			Name string `json:"name" binding:"required"`
-		}
-		if err := ctx.ShouldBindJSON(&json); err != nil {
+		var user types.User
+		if err := ctx.ShouldBindJSON(&user); err != nil {
 			ctx.JSON(http.StatusBadRequest, messageErrorMissingUserData)
 			return
 		}
-		user := types.User{ID: json.ID, Name: json.Name}
 
 		if !(id == user.ID) {
 			ctx.JSON(http.StatusUnauthorized, messageErrorUnauthorized)

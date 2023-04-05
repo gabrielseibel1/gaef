@@ -5,10 +5,15 @@ import (
 )
 
 type User struct {
+	ID         string `json:"id" bson:"_id,omitempty"`
+	Email      string `json:"email" bson:"email"`
+	Name       string `json:"name" bson:"name"`
+	PictureURL string `json:"pictureUrl" bson:"pictureUrl"`
+}
+
+type UserWithHashedPassword struct {
 	ID             string `json:"id" bson:"_id,omitempty"`
-	Name           string `json:"name" bson:"name"`
-	Email          string `json:"email" bson:"email"`
-	Password       string `json:"password" bson:"password"`
+	User           `json:"user" bson:"user"`
 	HashedPassword string `json:"hashedPassword" bson:"hashedPassword"`
 }
 

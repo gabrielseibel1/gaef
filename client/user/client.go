@@ -14,12 +14,12 @@ type Client struct {
 	URL string
 }
 
-func (c Client) SignUp(ctx context.Context, name, email, password string) (string, error) {
-	reqBodyBytes, err := json.Marshal(types.User{
-		Name:     name,
-		Email:    email,
-		Password: password,
-	})
+func (c Client) SignUp(ctx context.Context, user types.User, password string) (string, error) {
+	var body = struct {
+		User     types.User
+		Password string
+	}{user, password}
+	reqBodyBytes, err := json.Marshal(body)
 	if err != nil {
 		return "", err
 	}
@@ -43,10 +43,13 @@ func (c Client) SignUp(ctx context.Context, name, email, password string) (strin
 }
 
 func (c Client) Login(ctx context.Context, email, password string) (string, error) {
-	reqBodyBytes, err := json.Marshal(types.User{
-		Email:    email,
-		Password: password,
-	})
+	var body = struct {
+		Email    string
+		Password string
+	}{
+		email, password,
+	}
+	reqBodyBytes, err := json.Marshal(body)
 	if err != nil {
 		return "", err
 	}

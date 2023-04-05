@@ -3,6 +3,7 @@ package user_test
 import (
 	"context"
 	"github.com/gabrielseibel1/gaef/client/user"
+	"github.com/gabrielseibel1/gaef/types"
 	"testing"
 )
 
@@ -16,7 +17,7 @@ func TestClient_CRUD_Localhost8080(t *testing.T) {
 	password := "test123"
 
 	// create user
-	userID, err := usersClient.SignUp(ctx, name, email, password)
+	userID, err := usersClient.SignUp(ctx, types.User{Name: name, Email: email}, password)
 	if err != nil {
 		t.Fatalf("usersClient.SignUp = err: %s", err.Error())
 	}

@@ -22,18 +22,14 @@ var (
 	dummyToken           = "dummy-token"
 	dummyID              = "dummy-id"
 	dummyUser1           = types.User{
-		ID:             "dummy-user-id-1",
-		Name:           "dummy-user-name-1",
-		Email:          "dummy-user-email-1",
-		Password:       "dummy-user-password-1",
-		HashedPassword: "dummy-user-hashed-1",
+		ID:    "dummy-user-id-1",
+		Name:  "dummy-user-name-1",
+		Email: "dummy-user-email-1",
 	}
 	dummyUser2 = types.User{
-		ID:             "dummy-user-id-2",
-		Name:           "dummy-user-name-2",
-		Email:          "dummy-user-email-2",
-		Password:       "dummy-user-password-2",
-		HashedPassword: "dummy-user-hashed-2",
+		ID:    "dummy-user-id-2",
+		Name:  "dummy-user-name-2",
+		Email: "dummy-user-email-2",
 	}
 	dummyGroup1 = types.Group{
 		ID:          "dummy-group-id-1",

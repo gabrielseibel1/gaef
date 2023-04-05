@@ -20,14 +20,20 @@ func NewMongoStore(collection *mongo.Collection) *MongoStore {
 	}
 }
 
-func (ms MongoStore) Create(ctx context.Context, user types.User) (string, error) {
-	user.ID = ""
+func (ms MongoStore) Create(ctx context.Context, user types.UserWithHashedPassword) (string, error) {
+	user.ID, user.User.ID = "", ""
 	res, err := ms.collection.InsertOne(ctx, user)
 	if err != nil {
 		return "", err
 	}
 
 	id := res.InsertedID.(primitive.ObjectID).Hex()
+	user.User.ID = id
+	err = ms.Update(ctx, user.User)
+	if err != nil {
+		return "", err
+	}
+
 	return id, nil
 }
 
@@ -42,24 +48,24 @@ func (ms MongoStore) ReadByID(ctx context.Context, id string) (types.User, error
 		return types.User{}, res.Err()
 	}
 
-	var user types.User
+	var user types.UserWithHashedPassword
 	err = res.Decode(&user)
 	if err != nil {
 		return types.User{}, err
 	}
-	return user, err
+	return user.User, err
 }
 
-func (ms MongoStore) ReadSensitiveByEmail(ctx context.Context, email string) (types.User, error) {
-	res := ms.collection.FindOne(ctx, bson.M{"email": email})
+func (ms MongoStore) ReadSensitiveByEmail(ctx context.Context, email string) (types.UserWithHashedPassword, error) {
+	res := ms.collection.FindOne(ctx, bson.M{"user.email": email})
 	if res.Err() != nil {
-		return types.User{}, res.Err()
+		return types.UserWithHashedPassword{}, res.Err()
 	}
 
-	var user types.User
+	var user types.UserWithHashedPassword
 	err := res.Decode(&user)
 	if err != nil {
-		return types.User{}, err
+		return types.UserWithHashedPassword{}, err
 	}
 	return user, err
 }
@@ -70,7 +76,7 @@ func (ms MongoStore) Update(ctx context.Context, user types.User) error {
 		return err
 	}
 
-	res, err := ms.collection.UpdateOne(ctx, bson.M{"_id": hexID}, bson.M{"$set": bson.M{"name": user.Name}})
+	res, err := ms.collection.UpdateOne(ctx, bson.M{"_id": hexID}, bson.M{"$set": bson.M{"user": user}})
 	if err != nil {
 		return err
 	}
