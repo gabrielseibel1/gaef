@@ -34,25 +34,19 @@ type API struct {
 	encounterUpdater     EncounterUpdater
 	encounterDeleter     EncounterDeleter
 	encounterConfirmer   EncounterConfirmer
+	encounterDecliner    EncounterDecliner
 }
 
-func New(
-	encounterCreator EncounterCreator,
-	leaderChecker LeaderChecker,
-	encounterReader EncounterReader,
-	userEncountersReader UserEncountersReader,
-	encounterUpdater EncounterUpdater,
-	encounterDeleter EncounterDeleter,
-	encounterConfirmer EncounterConfirmer,
-) API {
+func New(leaderChecker LeaderChecker, encounterCreator EncounterCreator, encounterReader EncounterReader, userEncountersReader UserEncountersReader, encounterUpdater EncounterUpdater, encounterDeleter EncounterDeleter, encounterConfirmer EncounterConfirmer, encounterDecliner EncounterDecliner) API {
 	return API{
-		encounterCreator:     encounterCreator,
 		leaderChecker:        leaderChecker,
+		encounterCreator:     encounterCreator,
 		encounterReader:      encounterReader,
 		userEncountersReader: userEncountersReader,
 		encounterUpdater:     encounterUpdater,
 		encounterDeleter:     encounterDeleter,
 		encounterConfirmer:   encounterConfirmer,
+		encounterDecliner:    encounterDecliner,
 	}
 }
 
@@ -152,6 +146,27 @@ func (a API) ConfirmEncounter(ctx context.Context, userID string, encID string) 
 	return okResult(idName, encID)
 }
 
+func (a API) DeclineEncounter(ctx context.Context, userID string, encID string) server.Result {
+	enc, err := a.encounterReader.ReadEncounter(ctx, encID)
+	if err != nil {
+		return errResult(http.StatusNotFound, err)
+	}
+
+	_, err = getInvitedUser(enc, userID)
+	if err != nil {
+		return errResult(http.StatusUnauthorized, errUnauthorized)
+	}
+
+	if !userIsConfirmed(enc, userID) {
+		return errResult(http.StatusUnprocessableEntity, errors.New("user is not confirmed"))
+	}
+
+	if err := a.encounterDecliner.DeclineEncounter(ctx, encID, userID); err != nil {
+		return errResult(http.StatusNotFound, err)
+	}
+	return okResult(idName, encID)
+}
+
 type EncounterCreator interface {
 	CreateEncounter(ctx context.Context, e types.Encounter) (string, error)
 }
@@ -178,6 +193,10 @@ type EncounterDeleter interface {
 
 type EncounterConfirmer interface {
 	ConfirmEncounter(ctx context.Context, encID string, user types.User) error
+}
+
+type EncounterDecliner interface {
+	DeclineEncounter(ctx context.Context, encID, userID string) error
 }
 
 func (a API) userIsLeaderRemote(ctx context.Context, token string, enc types.Encounter) (bool, error) {

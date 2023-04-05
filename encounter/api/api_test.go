@@ -94,18 +94,11 @@ type mocks struct {
 	encounterUpdater     api.EncounterUpdater
 	encounterDeleter     api.EncounterDeleter
 	encounterConfirmer   api.EncounterConfirmer
+	encounterDecliner    api.EncounterDecliner
 }
 
 func apiFromMocks(m mocks) api.API {
-	return api.New(
-		m.encounterCreator,
-		m.leaderChecker,
-		m.encounterReader,
-		m.userEncountersReader,
-		m.encounterUpdater,
-		m.encounterDeleter,
-		m.encounterConfirmer,
-	)
+	return api.New(m.leaderChecker, m.encounterCreator, m.encounterReader, m.userEncountersReader, m.encounterUpdater, m.encounterDeleter, m.encounterConfirmer, m.encounterDecliner)
 }
 
 func TestResult_S(t *testing.T) {
@@ -672,20 +665,6 @@ func TestAPI_DeleteEncounter(t *testing.T) {
 	}
 }
 
-type mockEncounterConfirmer struct {
-	ctx   context.Context
-	encID string
-	user  types.User
-	err   error
-}
-
-func (m *mockEncounterConfirmer) ConfirmEncounter(ctx context.Context, encID string, user types.User) error {
-	m.ctx = ctx
-	m.encID = encID
-	m.user = user
-	return m.err
-}
-
 func TestAPI_ConfirmEncounter(t *testing.T) {
 	type args struct {
 		ctx    context.Context
@@ -817,8 +796,147 @@ func TestAPI_ConfirmEncounter(t *testing.T) {
 				a.ConfirmEncounter(tt.args.ctx, tt.args.userID, tt.args.encID),
 				"ConfirmEncounter(%v, %v, %v)",
 				tt.args.ctx,
-				tt.args.encID,
 				tt.args.userID,
+				tt.args.encID,
+			)
+			assert.Equal(t, tt.wantMocks, tt.mocks)
+		})
+	}
+}
+
+func TestAPI_DeclineEncounter(t *testing.T) {
+	type args struct {
+		ctx    context.Context
+		encID  string
+		userID string
+	}
+	dummyArgs := args{
+		ctx:    dummyCtx,
+		encID:  dummyEncounter1.ID,
+		userID: dummyUser2.ID,
+	}
+	tests := []struct {
+		name      string
+		mocks     mocks
+		args      args
+		want      api.Result
+		wantMocks mocks
+	}{
+		{
+			name: "decline encounter ok",
+			args: dummyArgs,
+			mocks: mocks{
+				encounterReader:   &mockEncounterReader{enc: dummyEncounter1},
+				encounterDecliner: &mockEncounterDecliner{},
+			},
+			want: api.Result{Status: http.StatusOK, Name: "id", Value: dummyEncounter1.ID},
+			wantMocks: mocks{
+				encounterReader: &mockEncounterReader{
+					ctx: dummyCtx,
+					id:  dummyEncounter1.ID,
+					enc: dummyEncounter1,
+				},
+				encounterDecliner: &mockEncounterDecliner{
+					ctx:    dummyCtx,
+					encID:  dummyEncounter1.ID,
+					userID: dummyUser2.ID,
+				},
+			},
+		},
+		{
+			name: "decline encounter user not invited",
+			args: args{
+				ctx:    dummyArgs.ctx,
+				encID:  dummyArgs.encID,
+				userID: dummyID,
+			},
+			mocks: mocks{
+				encounterReader:   &mockEncounterReader{enc: dummyEncounter1},
+				encounterDecliner: &mockEncounterDecliner{},
+			},
+			want: unauthorizedAPIError,
+			wantMocks: mocks{
+				encounterReader: &mockEncounterReader{
+					ctx: dummyCtx,
+					id:  dummyEncounter1.ID,
+					enc: dummyEncounter1,
+				},
+				encounterDecliner: &mockEncounterDecliner{},
+			},
+		},
+		{
+			name: "decline encounter user not confirmed",
+			args: args{
+				ctx:    dummyArgs.ctx,
+				encID:  dummyArgs.encID,
+				userID: dummyUser1.ID,
+			},
+			mocks: mocks{
+				encounterReader:   &mockEncounterReader{enc: dummyEncounter1},
+				encounterDecliner: &mockEncounterDecliner{},
+			},
+			want: api.Result{Status: http.StatusUnprocessableEntity, Name: "error", Value: "user is not confirmed"},
+			wantMocks: mocks{
+				encounterReader: &mockEncounterReader{
+					ctx: dummyCtx,
+					id:  dummyEncounter1.ID,
+					enc: dummyEncounter1,
+				},
+				encounterDecliner: &mockEncounterDecliner{},
+			},
+		},
+		{
+			name: "decline encounter reader error",
+			args: dummyArgs,
+			mocks: mocks{
+				encounterReader:   &mockEncounterReader{enc: dummyEncounter1, err: dummyError},
+				encounterDecliner: &mockEncounterDecliner{},
+			},
+			want: dummyAPIError(http.StatusNotFound),
+			wantMocks: mocks{
+				encounterReader: &mockEncounterReader{
+					ctx: dummyCtx,
+					id:  dummyEncounter1.ID,
+					enc: dummyEncounter1,
+					err: dummyError,
+				},
+				encounterDecliner: &mockEncounterDecliner{},
+			},
+		},
+		{
+			name: "decline encounter decliner error",
+			args: dummyArgs,
+			mocks: mocks{
+				encounterReader:   &mockEncounterReader{enc: dummyEncounter1},
+				encounterDecliner: &mockEncounterDecliner{err: dummyError},
+			},
+			want: dummyAPIError(http.StatusNotFound),
+			wantMocks: mocks{
+				encounterReader: &mockEncounterReader{
+					ctx: dummyCtx,
+					id:  dummyEncounter1.ID,
+					enc: dummyEncounter1,
+				},
+				encounterDecliner: &mockEncounterDecliner{
+					ctx:    dummyCtx,
+					encID:  dummyEncounter1.ID,
+					userID: dummyUser2.ID,
+					err:    dummyError,
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			a := apiFromMocks(tt.mocks)
+			assert.Equalf(
+				t,
+				tt.want,
+				a.DeclineEncounter(tt.args.ctx, tt.args.userID, tt.args.encID),
+				"DeclineEncounter(%v, %v, %v)",
+				tt.args.ctx,
+				tt.args.userID,
+				tt.args.encID,
 			)
 			assert.Equal(t, tt.wantMocks, tt.mocks)
 		})
@@ -901,5 +1019,33 @@ type mockEncounterDeleter struct {
 func (m *mockEncounterDeleter) DeleteEncounter(ctx context.Context, id string) error {
 	m.ctx = ctx
 	m.id = id
+	return m.err
+}
+
+type mockEncounterConfirmer struct {
+	ctx   context.Context
+	encID string
+	user  types.User
+	err   error
+}
+
+func (m *mockEncounterConfirmer) ConfirmEncounter(ctx context.Context, encID string, user types.User) error {
+	m.ctx = ctx
+	m.encID = encID
+	m.user = user
+	return m.err
+}
+
+type mockEncounterDecliner struct {
+	ctx    context.Context
+	encID  string
+	userID string
+	err    error
+}
+
+func (m *mockEncounterDecliner) DeclineEncounter(ctx context.Context, encID, userID string) error {
+	m.ctx = ctx
+	m.encID = encID
+	m.userID = userID
 	return m.err
 }

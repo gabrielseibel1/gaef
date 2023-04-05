@@ -22,6 +22,7 @@ type serverMocks struct {
 	encounterUpdater      server.EncounterUpdater
 	encounterDeleter      server.EncounterDeleter
 	encounterConfirmer    server.EncounterConfirmer
+	encounterDecliner     server.EncounterDecliner
 }
 
 func fromMocks(m serverMocks) server.Server {
@@ -32,6 +33,7 @@ func fromMocks(m serverMocks) server.Server {
 		m.encounterUpdater,
 		m.encounterDeleter,
 		m.encounterConfirmer,
+		m.encounterDecliner,
 	)
 }
 
@@ -271,6 +273,35 @@ func TestServer_ConfirmEncounterHandler(t *testing.T) {
 	}
 }
 
+func TestServer_DeclineEncounterHandler(t *testing.T) {
+	tests := []test{
+		{
+			name: "decline encounter handler ok",
+			mocks: serverMocks{
+				encounterDecliner: &mockEncounterDecliner{res: dummyResult},
+			},
+			request:          requestWithEncounterInBody(t, dummyEncounter1),
+			ctxValues:        map[string]any{"userID": dummyUser1.ID},
+			ctxParams:        map[string]string{"encounter-id": dummyEncounter1.ID},
+			codeUnderTest:    func(s server.Server) gin.HandlerFunc { return s.DeclineEncounterHandler() },
+			assertResponseOK: assertBodyFromDummyResult,
+			assertMocksOK: func(t *testing.T, c context.Context, mocks serverMocks) {
+				assert.Equal(t, mocks.encounterDecliner, &mockEncounterDecliner{
+					ctx:    c,
+					userID: dummyUser1.ID,
+					encID:  dummyEncounter1.ID,
+					res:    dummyResult,
+				})
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			testRequest(t, tt)
+		})
+	}
+}
+
 var (
 	dummyResult = result{
 		s: 299, // this value interferes in how ctx.JSON processes the response *body* too, not only the status code
@@ -434,6 +465,20 @@ type mockEncounterConfirmer struct {
 }
 
 func (m *mockEncounterConfirmer) ConfirmEncounter(ctx context.Context, userID, encID string) server.Result {
+	m.ctx = ctx
+	m.userID = userID
+	m.encID = encID
+	return m.res
+}
+
+type mockEncounterDecliner struct {
+	ctx    context.Context
+	userID string
+	encID  string
+	res    server.Result
+}
+
+func (m *mockEncounterDecliner) DeclineEncounter(ctx context.Context, userID, encID string) server.Result {
 	m.ctx = ctx
 	m.userID = userID
 	m.encID = encID

@@ -14,6 +14,7 @@ type Server struct {
 	encounterUpdater      EncounterUpdater
 	encounterDeleter      EncounterDeleter
 	encounterConfirmer    EncounterConfirmer
+	encounterDecliner     EncounterDecliner
 }
 
 func New(
@@ -23,6 +24,7 @@ func New(
 	encounterUpdater EncounterUpdater,
 	encounterDeleter EncounterDeleter,
 	encounterConfirmer EncounterConfirmer,
+	encounterDecliner EncounterDecliner,
 ) Server {
 	return Server{
 		encounterCreator:      encounterCreator,
@@ -31,6 +33,7 @@ func New(
 		encounterUpdater:      encounterUpdater,
 		encounterDeleter:      encounterDeleter,
 		encounterConfirmer:    encounterConfirmer,
+		encounterDecliner:     encounterDecliner,
 	}
 }
 
@@ -83,6 +86,13 @@ func (s Server) ConfirmEncounterHandler() gin.HandlerFunc {
 	return jsonHandler(func(c *gin.Context) Result {
 		uID, eID := userID(c), encID(c)
 		return s.encounterConfirmer.ConfirmEncounter(c, uID, eID)
+	})
+}
+
+func (s Server) DeclineEncounterHandler() gin.HandlerFunc {
+	return jsonHandler(func(c *gin.Context) Result {
+		uID, eID := userID(c), encID(c)
+		return s.encounterDecliner.DeclineEncounter(c, uID, eID)
 	})
 }
 
@@ -143,6 +153,10 @@ type EncounterDeleter interface {
 
 type EncounterConfirmer interface {
 	ConfirmEncounter(ctx context.Context, userID string, encID string) Result
+}
+
+type EncounterDecliner interface {
+	DeclineEncounter(ctx context.Context, userID string, encID string) Result
 }
 
 type errorResult struct {
