@@ -7,13 +7,13 @@ import (
 	"testing"
 )
 
-func TestClient_CRUD_Localhost8080(t *testing.T) {
+func testWithURL(t *testing.T, userServiceURL string) {
 	ctx := context.TODO()
 
-	usersClient := user.Client{URL: "http://localhost:8080/api/v0/users/"}
+	usersClient := user.Client{URL: userServiceURL}
 
 	name := "A"
-	email := "a@gmail.com"
+	email := "usertest1@gmail.com"
 	password := "test123"
 
 	// create user
@@ -36,7 +36,7 @@ func TestClient_CRUD_Localhost8080(t *testing.T) {
 
 	// update user
 	u.Name = "B"
-	u.Email = "b@gmail.com"
+	u.Email = "usertest2@gmail.com"
 	_, err = usersClient.UpdateUser(ctx, token, u)
 	if err != nil {
 		t.Fatalf("usersClient.UpdateUser = err: %s", err.Error())
@@ -53,4 +53,18 @@ func TestClient_CRUD_Localhost8080(t *testing.T) {
 	if err != nil {
 		t.Fatalf("usersClient.ReadToken = err: %s", err.Error())
 	}
+}
+
+func TestClient_Localhost8080(t *testing.T) {
+	testWithURL(
+		t,
+		"http://localhost:8080/api/v0/users/",
+	)
+}
+
+func TestClient_Production(t *testing.T) {
+	testWithURL(
+		t,
+		"https://gaef-user-service.onrender.com/api/v0/users/",
+	)
 }

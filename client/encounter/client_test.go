@@ -11,12 +11,12 @@ import (
 	"time"
 )
 
-func TestClient_Localhost8083(t *testing.T) {
+func testWithURLs(t *testing.T, userServiceURL, groupServiceURL, encounterServiceURL string) {
 	ctx := context.TODO()
 
-	usersClient := user.Client{URL: "http://localhost:8080/api/v0/users/"}
-	groupsClient := group.Client{URL: "http://localhost:8081/api/v0/groups/"}
-	encountersClient := encounter.Client{URL: "http://localhost:8083/api/v0/encounters/"}
+	usersClient := user.Client{URL: userServiceURL}
+	groupsClient := group.Client{URL: groupServiceURL}
+	encountersClient := encounter.Client{URL: encounterServiceURL}
 
 	// create user and group
 	user1ID, err := usersClient.SignUp(ctx, types.User{Name: "1", Email: "enctest_1@gmail.com"}, "test1231")
@@ -33,6 +33,13 @@ func TestClient_Localhost8083(t *testing.T) {
 		Leaders:     []types.User{{ID: user1ID, Name: "1"}},
 	})
 	assert.Nil(t, err)
+	// cleanup afterward
+	defer func(usersClient user.Client, ctx context.Context, token, id string) {
+		_, err := usersClient.DeleteUser(ctx, token, id)
+		assert.Nil(t, err)
+		_, err = groupsClient.DeleteGroup(ctx, token1, g1.ID)
+		assert.Nil(t, err)
+	}(usersClient, ctx, token1, user1ID)
 
 	// define encounter
 	enc1 := types.Encounter{
@@ -85,4 +92,22 @@ func TestClient_Localhost8083(t *testing.T) {
 	deletedID, err := encountersClient.DeleteEncounter(ctx, token1, enc1.ID)
 	assert.Nil(t, err)
 	assert.Equal(t, enc1.ID, deletedID)
+}
+
+func TestClient_Localhost8083(t *testing.T) {
+	testWithURLs(
+		t,
+		"http://localhost:8080/api/v0/users/",
+		"http://localhost:8081/api/v0/groups/",
+		"http://localhost:8083/api/v0/encounters/",
+	)
+}
+
+func TestClient_Production(t *testing.T) {
+	testWithURLs(
+		t,
+		"https://gaef-user-service.onrender.com/api/v0/users/",
+		"https://gaef-group-service.onrender.com/api/v0/groups/",
+		"https://gaef-encounter-service.onrender.com/api/v0/encounters/",
+	)
 }

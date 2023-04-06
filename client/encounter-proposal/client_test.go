@@ -6,17 +6,18 @@ import (
 	"github.com/gabrielseibel1/gaef/client/group"
 	"github.com/gabrielseibel1/gaef/client/user"
 	"github.com/gabrielseibel1/gaef/types"
+	"github.com/stretchr/testify/assert"
 	"reflect"
 	"testing"
 	"time"
 )
 
-func TestClient_Localhost8082(t *testing.T) {
+func testWithURLs(t *testing.T, userServiceURL, groupServiceURL, encounterProposalServiceURL string) {
 	ctx := context.TODO()
 
-	usersClient := user.Client{URL: "http://localhost:8080/api/v0/users/"}
-	groupsClient := group.Client{URL: "http://localhost:8081/api/v0/groups/"}
-	encounterProposalClient := encounterProposal.Client{URL: "http://localhost:8082/api/v0/encounter-proposals/"}
+	usersClient := user.Client{URL: userServiceURL}
+	groupsClient := group.Client{URL: groupServiceURL}
+	encounterProposalClient := encounterProposal.Client{URL: encounterProposalServiceURL}
 
 	// create two users and three groups:
 	// user 1 - leads 1 group (g1)
@@ -33,6 +34,10 @@ func TestClient_Localhost8082(t *testing.T) {
 	if err != nil {
 		t.Fatalf("usersClient.Login = err: %s", err.Error())
 	}
+	token2, err := usersClient.Login(ctx, "eptest_2@gmail.com", "test1232")
+	if err != nil {
+		t.Fatalf("usersClient.Login = err: %s", err.Error())
+	}
 	g1, err := groupsClient.CreateGroup(ctx, token1, types.Group{
 		Name:        "G",
 		PictureURL:  "example.com",
@@ -42,10 +47,6 @@ func TestClient_Localhost8082(t *testing.T) {
 	})
 	if err != nil {
 		t.Fatalf("groupsClient.CreateGroup = err: %s", err.Error())
-	}
-	token2, err := usersClient.Login(ctx, "eptest_2@gmail.com", "test1232")
-	if err != nil {
-		t.Fatalf("usersClient.Login = err: %s", err.Error())
 	}
 	g2, err := groupsClient.CreateGroup(ctx, token2, types.Group{
 		Name:        "H",
@@ -67,6 +68,18 @@ func TestClient_Localhost8082(t *testing.T) {
 	if err != nil {
 		t.Fatalf("groupsClient.CreateGroup = err: %s", err.Error())
 	}
+	defer func(usersClient user.Client, groupsClient group.Client, ctx context.Context, token, id string) {
+		_, err := usersClient.DeleteUser(ctx, token, id)
+		assert.Nil(t, err)
+		_, err = usersClient.DeleteUser(ctx, token2, user2ID)
+		assert.Nil(t, err)
+		_, err = groupsClient.DeleteGroup(ctx, token1, g1.ID)
+		assert.Nil(t, err)
+		_, err = groupsClient.DeleteGroup(ctx, token2, g2.ID)
+		assert.Nil(t, err)
+		_, err = groupsClient.DeleteGroup(ctx, token2, g3.ID)
+		assert.Nil(t, err)
+	}(usersClient, groupsClient, ctx, token1, user1ID)
 
 	// create three EPs:
 	// 1 - created by g2 (leader user 2)
@@ -106,9 +119,6 @@ func TestClient_Localhost8082(t *testing.T) {
 		t.Fatalf("encounterProposalClient.CreateEP() = err: %s", err.Error())
 	}
 
-	// use token2 (user 2, leader of g2 and g3) from now on
-	token := token2
-
 	// assert "mine" collection has only first two created EPs
 	mine, err := encounterProposalClient.Mine(ctx, token2)
 	if err != nil {
@@ -143,7 +153,7 @@ func TestClient_Localhost8082(t *testing.T) {
 	}
 
 	// assert that next page has no content
-	page1, err := encounterProposalClient.Page(ctx, token, 1)
+	page1, err := encounterProposalClient.Page(ctx, token2, 1)
 	if err != nil {
 		t.Fatalf("encounterProposalClient.Page() = err: %s", err.Error())
 	}
@@ -152,21 +162,21 @@ func TestClient_Localhost8082(t *testing.T) {
 	}
 
 	// read each EP and check equals to created one
-	readEP1, err := encounterProposalClient.ReadEP(ctx, token, createdEP1ID)
+	readEP1, err := encounterProposalClient.ReadEP(ctx, token2, createdEP1ID)
 	if err != nil {
 		t.Fatalf("encounterProposalClient.ReadEP() = err: %s", err.Error())
 	}
 	if readEP1.ID != createdEP1ID {
 		t.Fatalf("got %v, want %v", readEP1.ID, createdEP1ID)
 	}
-	readEP2, err := encounterProposalClient.ReadEP(ctx, token, createdEP2ID)
+	readEP2, err := encounterProposalClient.ReadEP(ctx, token2, createdEP2ID)
 	if err != nil {
 		t.Fatalf("encounterProposalClient.ReadEP() = err: %s", err.Error())
 	}
 	if readEP2.ID != createdEP2ID {
 		t.Fatalf("got %v, want %v", readEP2.ID, createdEP2ID)
 	}
-	readEP3, err := encounterProposalClient.ReadEP(ctx, token, createdEP3ID)
+	readEP3, err := encounterProposalClient.ReadEP(ctx, token2, createdEP3ID)
 	if err != nil {
 		t.Fatalf("encounterProposalClient.ReadEP() = err: %s", err.Error())
 	}
@@ -176,7 +186,7 @@ func TestClient_Localhost8082(t *testing.T) {
 
 	// update an encounter proposal and assert changes were made
 	readEP1.Name = "Updated Name"
-	updatedEP1, err := encounterProposalClient.UpdateEP(ctx, token, readEP1)
+	updatedEP1, err := encounterProposalClient.UpdateEP(ctx, token2, readEP1)
 	if err != nil {
 		t.Fatalf("encounterProposalClient.UpdateEP() = err: %s", err.Error())
 	}
@@ -184,16 +194,7 @@ func TestClient_Localhost8082(t *testing.T) {
 		t.Fatalf("got %v, want %v", got, want)
 	}
 
-	// delete an encounter proposal
-	deletedMessage, err := encounterProposalClient.DeleteEP(ctx, token, updatedEP1.ID)
-	if err != nil {
-		t.Fatalf("encounterProposalClient.DeleteEP() = err: %s", err.Error())
-	}
-	if got, want := deletedMessage, "deleted encounter proposal "+updatedEP1.ID; got != want {
-		t.Fatalf("got %v, want %v", got, want)
-	}
-
-	// append an application ot an encounter proposal (use token 1, user 1, leader of g1)
+	// append an application to an encounter proposal (use token 1, user 1, leader of g1)
 	appliedMessage, err := encounterProposalClient.ApplyToEP(ctx, token1, readEP2.ID, types.Application{
 		Description: "application1",
 		Applicant:   g1,
@@ -204,4 +205,45 @@ func TestClient_Localhost8082(t *testing.T) {
 	if got, want := appliedMessage, "applied for encounter proposal "+readEP2.ID; got != want {
 		t.Fatalf("got %v, want %v", got, want)
 	}
+
+	// delete all encounter proposals
+	deletedMessage, err := encounterProposalClient.DeleteEP(ctx, token2, createdEP1ID)
+	if err != nil {
+		t.Fatalf("encounterProposalClient.DeleteEP() = err: %s", err.Error())
+	}
+	if got, want := deletedMessage, "deleted encounter proposal "+createdEP1ID; got != want {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+	deletedMessage, err = encounterProposalClient.DeleteEP(ctx, token2, createdEP2ID)
+	if err != nil {
+		t.Fatalf("encounterProposalClient.DeleteEP() = err: %s", err.Error())
+	}
+	if got, want := deletedMessage, "deleted encounter proposal "+createdEP2ID; got != want {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+	deletedMessage, err = encounterProposalClient.DeleteEP(ctx, token1, createdEP3ID)
+	if err != nil {
+		t.Fatalf("encounterProposalClient.DeleteEP() = err: %s", err.Error())
+	}
+	if got, want := deletedMessage, "deleted encounter proposal "+createdEP3ID; got != want {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+}
+
+func TestClient_Localhost8082(t *testing.T) {
+	testWithURLs(
+		t,
+		"http://localhost:8080/api/v0/users/",
+		"http://localhost:8081/api/v0/groups/",
+		"http://localhost:8082/api/v0/encounter-proposals/",
+	)
+}
+
+func TestClient_Production(t *testing.T) {
+	testWithURLs(
+		t,
+		"https://gaef-user-service.onrender.com/api/v0/users/",
+		"https://gaef-group-service.onrender.com/api/v0/groups/",
+		"https://gaef-encounter-proposal-service.onrender.com/api/v0/encounter-proposals/",
+	)
 }
