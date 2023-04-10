@@ -72,7 +72,7 @@ services:
       - key: USER_SERVICE_URL
         value: https://gaef-user-service.onrender.com/api/v0/users/
       - key: GROUP_SERVICE_URL
-        value: https://gaef-group-service.onrender.com/api/v0/users/
+        value: https://gaef-group-service.onrender.com/api/v0/groups/
       - key: MONGODB_DATABASE
         value: encounter-proposals
       - key: MONGODB_COLLECTION
@@ -102,7 +102,7 @@ services:
       - key: USER_SERVICE_URL
         value: https://gaef-user-service.onrender.com/api/v0/users/
       - key: GROUP_SERVICE_URL
-        value: https://gaef-group-service.onrender.com/api/v0/users/
+        value: https://gaef-group-service.onrender.com/api/v0/groups/
       - key: MONGODB_DATABASE
         value: encounters
       - key: MONGODB_COLLECTION
