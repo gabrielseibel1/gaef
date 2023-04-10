@@ -19,6 +19,20 @@ func testWithURLs(t *testing.T, userServiceURL, groupServiceURL, encounterPropos
 	groupsClient := group.Client{URL: groupServiceURL}
 	encounterProposalClient := encounterProposal.Client{URL: encounterProposalServiceURL}
 
+	// health check
+	err := usersClient.Health(ctx)
+	if err != nil {
+		t.Fatalf("usersClient.Health = err: %s", err.Error())
+	}
+	err = groupsClient.Health(ctx)
+	if err != nil {
+		t.Fatalf("groupsClient.Health = err: %s", err.Error())
+	}
+	err = encounterProposalClient.Health(ctx)
+	if err != nil {
+		t.Fatalf("encounterProposalClient.Health = err: %s", err.Error())
+	}
+
 	// create two users and three groups:
 	// user 1 - leads 1 group (g1)
 	// user 2 - leads 2 groups (g2, g3)

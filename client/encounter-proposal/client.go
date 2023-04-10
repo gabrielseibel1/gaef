@@ -15,6 +15,22 @@ type Client struct {
 	URL string
 }
 
+func (c Client) Health(ctx context.Context) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.URL+"health", nil)
+	if err != nil {
+		return err
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("health request returned status code %d", resp.StatusCode)
+	}
+	return nil
+}
+
 func (c Client) CreateEP(ctx context.Context, token string, ep types.EncounterProposal) (string, error) {
 	reqBodyBytes, err := json.Marshal(ep)
 	if err != nil {

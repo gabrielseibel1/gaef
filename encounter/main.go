@@ -14,6 +14,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"log"
+	"net/http"
 	"os"
 	"time"
 )
@@ -60,14 +61,16 @@ func main() {
 
 	// setup HTTP server
 	app := gin.Default()
-	encounters := app.Group("/api/v0/encounters", authentication.AuthMiddleware())
+	encounters := app.Group("/api/v0/encounters")
+	encounters.GET("/health", func(c *gin.Context) { c.Status(http.StatusOK) })
+	authed := encounters.Group("", authentication.AuthMiddleware())
 	{
-		noID := encounters.Group("/")
+		noID := authed.Group("/")
 		{
 			noID.GET("", handlers.ReadUserEncountersHandler())
 			noID.POST("", handlers.CreateEncounterHandler())
 		}
-		byID := encounters.Group("/:" + server.EncIDParam)
+		byID := authed.Group("/:" + server.EncIDParam)
 		{
 			byID.GET("", handlers.ReadEncounterHandler())
 			byID.PUT("", handlers.UpdateEncounterHandler())

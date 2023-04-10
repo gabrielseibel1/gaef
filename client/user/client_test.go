@@ -16,6 +16,12 @@ func testWithURL(t *testing.T, userServiceURL string) {
 	email := "usertest1@gmail.com"
 	password := "test123"
 
+	// health check
+	err := usersClient.Health(ctx)
+	if err != nil {
+		t.Fatalf("usersClient.Health = err: %s", err.Error())
+	}
+
 	// create user
 	userID, err := usersClient.SignUp(ctx, types.User{Name: name, Email: email}, password)
 	if err != nil {

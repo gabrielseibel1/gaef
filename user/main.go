@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/gabrielseibel1/gaef/user/hasher"
 	"log"
+	"net/http"
 	"os"
 	"time"
 
@@ -100,6 +101,8 @@ func main() {
 	r := gin.Default()
 	users := r.Group("/api/v0/users")
 	{
+		users.GET("/health", func(c *gin.Context) { c.Status(http.StatusOK) })
+
 		public := users.Group("")
 		{
 			public.POST("/", gen.signupHandler.Signup())

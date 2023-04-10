@@ -17,6 +17,16 @@ func testWithURLs(t *testing.T, userServiceURL, groupServiceURL string) {
 	usersClient := user.Client{URL: userServiceURL}
 	groupsClient := group.Client{URL: groupServiceURL}
 
+	// health check
+	err := usersClient.Health(ctx)
+	if err != nil {
+		t.Fatalf("usersClient.Health = err: %s", err.Error())
+	}
+	err = groupsClient.Health(ctx)
+	if err != nil {
+		t.Fatalf("groupsClient.Health = err: %s", err.Error())
+	}
+
 	// create group with three users
 	user1ID, err := usersClient.SignUp(ctx, types.User{Name: "1", Email: "grouptest1@gmail.com"}, "test1231")
 	if err != nil {

@@ -18,6 +18,14 @@ func testWithURLs(t *testing.T, userServiceURL, groupServiceURL, encounterServic
 	groupsClient := group.Client{URL: groupServiceURL}
 	encountersClient := encounter.Client{URL: encounterServiceURL}
 
+	// health check
+	err := usersClient.Health(ctx)
+	assert.Nil(t, err)
+	err = groupsClient.Health(ctx)
+	assert.Nil(t, err)
+	err = encountersClient.Health(ctx)
+	assert.Nil(t, err)
+
 	// create user and group
 	user1ID, err := usersClient.SignUp(ctx, types.User{Name: "1", Email: "enctest_1@gmail.com"}, "test1231")
 	assert.Nil(t, err)

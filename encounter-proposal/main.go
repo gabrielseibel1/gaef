@@ -9,6 +9,7 @@ import (
 	"github.com/gabrielseibel1/gaef/encounter-proposal/api"
 	"github.com/gabrielseibel1/gaef/encounter-proposal/store"
 	"log"
+	"net/http"
 	"os"
 	"time"
 
@@ -110,13 +111,15 @@ func main() {
 
 	// run HTTP server
 	server := gin.Default()
-	root := server.Group("/api/v0/encounter-proposals", hg.authMiddlewareGenerator.AuthMiddleware())
+	root := server.Group("/api/v0/encounter-proposals")
+	root.GET("/health", func(c *gin.Context) { c.Status(http.StatusOK) })
+	authed := root.Group("", hg.authMiddlewareGenerator.AuthMiddleware())
 	{
-		root.POST("/", hg.epCreationHandlerGenerator.EPCreationHandler())
-		root.GET("/page/:"+api.Page, hg.epReadingAllHandlerGenerator.EPReadingAllHandler())
-		root.GET("/mine", hg.epReadingByUserHandlerGenerator.EPReadingByUserHandler())
+		authed.POST("/", hg.epCreationHandlerGenerator.EPCreationHandler())
+		authed.GET("/page/:"+api.Page, hg.epReadingAllHandlerGenerator.EPReadingAllHandler())
+		authed.GET("/mine", hg.epReadingByUserHandlerGenerator.EPReadingByUserHandler())
 
-		byEPID := root.Group("/:" + api.EPID)
+		byEPID := authed.Group("/:" + api.EPID)
 		{
 			byEPID.GET("", hg.epReadingByIDHandlerGenerator.EPReadingByIDHandler())
 

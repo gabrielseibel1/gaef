@@ -14,6 +14,11 @@ type Client struct {
 	URL string
 }
 
+func (c Client) Health(ctx context.Context) error {
+	err := request(ctx, http.MethodGet, c.URL+"health", nil, "", nil)
+	return err
+}
+
 func (c Client) CreateEncounter(ctx context.Context, token string, e types.Encounter) (string, error) {
 	var respBody struct{ ID string }
 	err := request(ctx, http.MethodPost, c.URL, e, token, &respBody)
@@ -86,5 +91,8 @@ func request(ctx context.Context, method string, url string, bodyObj any, token 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("request(%v, %v, %v) returned status code %d", method, url, body, resp.StatusCode)
 	}
-	return json.NewDecoder(resp.Body).Decode(respBody)
+	if respBody != nil {
+		return json.NewDecoder(resp.Body).Decode(respBody)
+	}
+	return nil
 }

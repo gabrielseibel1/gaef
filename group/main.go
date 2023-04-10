@@ -8,6 +8,7 @@ import (
 	"github.com/gabrielseibel1/gaef/group/handler"
 	"github.com/gabrielseibel1/gaef/group/store"
 	"log"
+	"net/http"
 	"os"
 	"time"
 
@@ -65,14 +66,16 @@ func main() {
 
 	// run http server
 	server := gin.Default()
-	api := server.Group("/api/v0/groups", handlers.auth.AuthMiddleware())
+	groups := server.Group("/api/v0/groups")
+	groups.GET("/health", func(c *gin.Context) { c.Status(http.StatusOK) })
+	authed := groups.Group("", handlers.auth.AuthMiddleware())
 	{
-		api.POST("/", handlers.createGroup.CreateGroupHandler())
-		api.GET("/participating", handlers.readParticipatingGroups.ReadParticipatingGroupsHandler())
-		api.GET("/leading", handlers.readLeadingGroups.ReadLeadingGroupsHandler())
-		api.GET("/:id", handlers.readGroup.ReadGroupHandler())
+		authed.POST("/", handlers.createGroup.CreateGroupHandler())
+		authed.GET("/participating", handlers.readParticipatingGroups.ReadParticipatingGroupsHandler())
+		authed.GET("/leading", handlers.readLeadingGroups.ReadLeadingGroupsHandler())
+		authed.GET("/:id", handlers.readGroup.ReadGroupHandler())
 
-		forLeaders := api.Group("", handlers.onlyLeaders.OnlyLeadersMiddleware())
+		forLeaders := authed.Group("", handlers.onlyLeaders.OnlyLeadersMiddleware())
 		{
 			forLeaders.GET("/leading/:id", handlers.readGroup.ReadGroupHandler())
 			forLeaders.PUT("/:id", handlers.updateGroup.UpdateGroupHandler())
