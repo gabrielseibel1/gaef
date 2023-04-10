@@ -1,0 +1,119 @@
+services:
+  - type: web
+    name: gaef-user-service
+    env: docker
+    dockerContext: .
+    dockerfilePath: ./user/Dockerfile
+    region: oregon
+    plan: free
+    buildFilter:
+      paths:
+        - user/**
+        - types/**
+        - go.work
+        - go.work.sum
+    healthCheckPath: /api/v0/users/health
+    envVars:
+      - key: JWT_SECRET
+        generateValue: true
+      - key: MONGODB_DATABASE
+        value: users
+      - key: MONGODB_COLLECTION
+        value: users
+      - fromGroup: gin-server
+      - fromGroup: gaef-mongo-uri
+  - type: web
+    name: gaef-group-service
+    env: docker
+    dockerContext: .
+    dockerfilePath: ./group/Dockerfile
+    region: oregon
+    plan: free
+    buildFilter:
+      paths:
+        - group/**
+        - types/**
+        - auth/**
+        - client/user/**
+        - go.work
+        - go.work.sum
+        - client/go.mod
+        - client/go.sum
+    healthCheckPath: /api/v0/group/health
+    envVars:
+      - key: USER_SERVICE_URL
+        value: https://gaef-user-service.onrender.com/api/v0/users/
+      - key: MONGODB_DATABASE
+        value: groups
+      - key: MONGODB_COLLECTION
+        value: groups
+      - fromGroup: gin-server
+      - fromGroup: gaef-mongo-uri
+  - type: web
+    name: gaef-encounter-proposal-service
+    env: docker
+    dockerContext: .
+    dockerfilePath: ./encounter-proposal/Dockerfile
+    region: oregon
+    plan: free
+    buildFilter:
+      paths:
+        - encounter-proposal/**
+        - types/**
+        - auth/**
+        - client/user/**
+        - client/group/**
+        - go.work
+        - go.work.sum
+        - client/go.mod
+        - client/go.sum
+    healthCheckPath: /api/v0/encounter-proposal/health
+    envVars:
+      - key: USER_SERVICE_URL
+        value: https://gaef-user-service.onrender.com/api/v0/users/
+      - key: GROUP_SERVICE_URL
+        value: https://gaef-group-service.onrender.com/api/v0/users/
+      - key: MONGODB_DATABASE
+        value: encounter-proposals
+      - key: MONGODB_COLLECTION
+        value: encounter-proposals
+      - fromGroup: gin-server
+      - fromGroup: gaef-mongo-uri
+  - type: web
+    name: gaef-encounter-service
+    env: docker
+    dockerContext: .
+    dockerfilePath: ./encounter/Dockerfile
+    region: oregon
+    plan: free
+    buildFilter:
+      paths:
+        - encounter/**
+        - types/**
+        - auth/**
+        - client/user/**
+        - client/group/**
+        - go.work
+        - go.work.sum
+        - client/go.mod
+        - client/go.sum
+    healthCheckPath: /api/v0/encounter/health
+    envVars:
+      - key: USER_SERVICE_URL
+        value: https://gaef-user-service.onrender.com/api/v0/users/
+      - key: GROUP_SERVICE_URL
+        value: https://gaef-group-service.onrender.com/api/v0/users/
+      - key: MONGODB_DATABASE
+        value: encounters
+      - key: MONGODB_COLLECTION
+        value: encounters
+      - fromGroup: gin-server
+      - fromGroup: gaef-mongo-uri
+
+envVarGroups:
+  - name: gin-server
+    envVars:
+      - key: GIN_MODE
+        value: release
+      - key: PORT
+        value: 8080
