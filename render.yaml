@@ -39,7 +39,7 @@ services:
         - go.work.sum
         - client/go.mod
         - client/go.sum
-    healthCheckPath: /api/v0/group/health
+    healthCheckPath: /api/v0/groups/health
     envVars:
       - key: USER_SERVICE_URL
         value: https://gaef-user-service.onrender.com/api/v0/users/
@@ -67,7 +67,7 @@ services:
         - go.work.sum
         - client/go.mod
         - client/go.sum
-    healthCheckPath: /api/v0/encounter-proposal/health
+    healthCheckPath: /api/v0/encounter-proposals/health
     envVars:
       - key: USER_SERVICE_URL
         value: https://gaef-user-service.onrender.com/api/v0/users/
@@ -97,7 +97,7 @@ services:
         - go.work.sum
         - client/go.mod
         - client/go.sum
-    healthCheckPath: /api/v0/encounter/health
+    healthCheckPath: /api/v0/encounters/health
     envVars:
       - key: USER_SERVICE_URL
         value: https://gaef-user-service.onrender.com/api/v0/users/
