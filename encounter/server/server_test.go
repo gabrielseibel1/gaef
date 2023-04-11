@@ -332,7 +332,7 @@ var (
 				Latitude:  42.42,
 				Longitude: 87.87,
 			},
-			Time: time.Now().Round(time.Minute),
+			Time: time.Now().Round(time.Minute).UTC(),
 		},
 		Groups:         []types.Group{dummyGroup1},
 		InvitedUsers:   []types.User{dummyUser1},
