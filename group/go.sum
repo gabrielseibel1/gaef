@@ -7,6 +7,12 @@ github.com/chenzhuoyu/base64x v0.0.0-20221115062448-fe3a3abad311/go.mod h1:b583j
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
+github.com/gabrielseibel1/gaef/auth v0.0.0-20230411111437-0d1a31eefd27 h1:KihwhuV5kJRSYozi2ofg2PIMqvpZipVQIc6CFWhaELo=
+github.com/gabrielseibel1/gaef/auth v0.0.0-20230411111437-0d1a31eefd27/go.mod h1:DcSNBa6Zbvm9SUK+7X/JaDZQJG/PkS1673W0Mu6PJ5E=
+github.com/gabrielseibel1/gaef/client v0.0.0-20230411111437-0d1a31eefd27 h1:yT89bPVMODoDYTXh3ExQn/jqnAqexUmu22z2wmKl3YQ=
+github.com/gabrielseibel1/gaef/client v0.0.0-20230411111437-0d1a31eefd27/go.mod h1:u854MEt4hhZ0tfevnIq5BJ8DzUTxAElHWZYJXHjFfFs=
+github.com/gabrielseibel1/gaef/types v0.0.0-20230411111437-0d1a31eefd27 h1:iBnrDi/DjUdVpkzTAFqrrsZgn9xPFXpk2o4K9nHZVc8=
+github.com/gabrielseibel1/gaef/types v0.0.0-20230411111437-0d1a31eefd27/go.mod h1:0yjCNZFEb50Ti+6YHKi5j+UlLhm8M46b+zqGGCpLV8w=
 github.com/gin-contrib/sse v0.1.0 h1:Y/yl/+YNO8GZSjAhjMsSuLt29uWRFHdHYUb5lYOV9qE=
 github.com/gin-contrib/sse v0.1.0/go.mod h1:RHrZQHXnP2xjPF+u1gW/2HnVO7nvIa9PG3Gm+fLHvGI=
 github.com/gin-gonic/gin v1.9.0 h1:OjyFBKICoexlu99ctXNR2gg+c5pKrKMuyjgARg9qeY8=
@@ -27,8 +33,6 @@ github.com/google/go-cmp v0.5.2/go.mod h1:v8dTdLbMG2kIc/vJvl+f65V22dbkXbowE6jgT/
 github.com/google/go-cmp v0.5.5 h1:Khx7svrCpmxxtHBq5j2mp/xVjsi8hQMfNLvJFAlrGgU=
 github.com/google/go-cmp v0.5.5/go.mod h1:v8dTdLbMG2kIc/vJvl+f65V22dbkXbowE6jgT/gNBxE=
 github.com/google/gofuzz v1.0.0/go.mod h1:dBl0BpW6vV/+mYPU4Po3pmUjxk6FQPldtuIdl/M65Eg=
-github.com/joho/godotenv v1.5.1 h1:7eLL/+HRGLY0ldzfGMeQkb7vMd0as4CfYvUVzLqw0N0=
-github.com/joho/godotenv v1.5.1/go.mod h1:f4LDr5Voq0i2e/R5DDNOoa2zzDfwtkZa6DnEwAbqwq4=
 github.com/json-iterator/go v1.1.12 h1:PV8peI4a0ysnczrg+LtxykD8LfKY9ML6u2jnxaEnrnM=
 github.com/json-iterator/go v1.1.12/go.mod h1:e30LSqwooZae/UwlEbR2852Gd8hjQvJoHmT4TnhNGBo=
 github.com/klauspost/compress v1.13.6 h1:P76CopJELS0TiO2mebmnzgWaajssP/EszplttgQxcgc=

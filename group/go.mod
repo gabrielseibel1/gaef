@@ -3,8 +3,10 @@ module github.com/gabrielseibel1/gaef/group
 go 1.19
 
 require (
+	github.com/gabrielseibel1/gaef/auth v0.0.0-20230411111437-0d1a31eefd27
+	github.com/gabrielseibel1/gaef/client v0.0.0-20230411111437-0d1a31eefd27
+	github.com/gabrielseibel1/gaef/types v0.0.0-20230411111437-0d1a31eefd27
 	github.com/gin-gonic/gin v1.9.0
-	github.com/joho/godotenv v1.5.1
 	go.mongodb.org/mongo-driver v1.11.2
 )
 
