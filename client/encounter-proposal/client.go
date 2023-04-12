@@ -185,3 +185,23 @@ func (c Client) ApplyToEP(ctx context.Context, token string, id string, app type
 	err = json.NewDecoder(resp.Body).Decode(&respBody)
 	return respBody.Message, err
 }
+
+func (c Client) DeleteApplication(ctx context.Context, token string, epID string, appID string) (string, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, c.URL+epID+"/applications/"+appID, nil)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Add("Authorization", "Bearer "+token)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("delete application apply to EP request returned status code %d", resp.StatusCode)
+	}
+
+	var respBody struct{ Message string }
+	err = json.NewDecoder(resp.Body).Decode(&respBody)
+	return respBody.Message, err
+}

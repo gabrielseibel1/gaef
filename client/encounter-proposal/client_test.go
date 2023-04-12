@@ -2,6 +2,7 @@ package encounterProposal_test
 
 import (
 	"context"
+	"fmt"
 	"github.com/gabrielseibel1/gaef/client/encounter-proposal"
 	"github.com/gabrielseibel1/gaef/client/group"
 	"github.com/gabrielseibel1/gaef/client/user"
@@ -217,6 +218,15 @@ func testWithURLs(t *testing.T, userServiceURL, groupServiceURL, encounterPropos
 		t.Fatalf("encounterProposalClient.ApplyToEP() = err: %s", err.Error())
 	}
 	if got, want := appliedMessage, "applied for encounter proposal "+readEP2.ID; got != want {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+
+	// delete application just appended
+	deletedAppMessage, err := encounterProposalClient.DeleteApplication(ctx, token2, readEP2.ID, g1.ID)
+	if err != nil {
+		t.Fatalf("encounterProposalClient.DeleteApplication() = err: %s", err.Error())
+	}
+	if got, want := deletedAppMessage, fmt.Sprintf("deleted application %s of encounter proposal %s", g1.ID, readEP2.ID); got != want {
 		t.Fatalf("got %v, want %v", got, want)
 	}
 

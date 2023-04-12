@@ -29,6 +29,7 @@ type handlerGenerators struct {
 	epUpdateHandlerGenerator                       epUpdateHandlerGenerator
 	epDeletionHandlerGenerator                     epDeletionHandlerGenerator
 	appCreationHandlerGenerator                    appCreationHandlerGenerator
+	appDeletionHandlerGenerator                    appDeletionHandlerGenerator
 }
 
 type authMiddlewareGenerator interface {
@@ -57,6 +58,9 @@ type epDeletionHandlerGenerator interface {
 }
 type appCreationHandlerGenerator interface {
 	AppCreationHandler() gin.HandlerFunc
+}
+type appDeletionHandlerGenerator interface {
+	AppDeletionHandler() gin.HandlerFunc
 }
 
 func main() {
@@ -94,9 +98,9 @@ func main() {
 	// instantiate and inject dependencies
 	userClient := user.Client{URL: userServiceURL}
 	groupClient := group.Client{URL: groupServiceURL}
-	authHandler := auth.NewMiddlewareGenerator(userClient, "userID", "token")
+	authHandler := auth.NewMiddlewareGenerator(userClient, api.AuthenticatedUserID, api.AuthenticatedUserToken)
 	db := store.New(client.Database(dbName).Collection(collectionName))
-	encounterProposalsAPI := api.New(db, db, db, db, db, db, db, groupClient, groupClient)
+	encounterProposalsAPI := api.New(db, db, db, db, db, db, db, db, groupClient, groupClient)
 	hg := handlerGenerators{
 		authMiddlewareGenerator:                        authHandler,
 		epCreatorGroupLeaderCheckerMiddlewareGenerator: encounterProposalsAPI,
@@ -107,6 +111,7 @@ func main() {
 		epUpdateHandlerGenerator:                       encounterProposalsAPI,
 		epDeletionHandlerGenerator:                     encounterProposalsAPI,
 		appCreationHandlerGenerator:                    encounterProposalsAPI,
+		appDeletionHandlerGenerator:                    encounterProposalsAPI,
 	}
 
 	// run HTTP server
@@ -127,6 +132,7 @@ func main() {
 			{
 				creatorsOnly.PUT("", hg.epUpdateHandlerGenerator.EPUpdateHandler())
 				creatorsOnly.DELETE("", hg.epDeletionHandlerGenerator.EPDeletionHandler())
+				creatorsOnly.DELETE("/applications/:"+api.AppID, hg.appDeletionHandlerGenerator.AppDeletionHandler())
 			}
 
 			byEPID.POST("/applications", hg.appCreationHandlerGenerator.AppCreationHandler())

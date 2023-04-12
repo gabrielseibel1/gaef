@@ -11,8 +11,11 @@ import (
 )
 
 var (
-	Page = "page"
-	EPID = "epid"
+	Page                   = "page"
+	EPID                   = "epid"
+	AppID                  = "appid"
+	AuthenticatedUserID    = "userID"
+	AuthenticatedUserToken = "token"
 )
 
 type API struct {
@@ -23,6 +26,7 @@ type API struct {
 	epUpdater           encounterProposalUpdater
 	epDeleter           encounterProposalDeleter
 	appAppender         applicationAppender
+	appDeleter          applicationDeleter
 	leadingGroupsLister leadingGroupsLister
 	leaderChecker       groupLeaderChecker
 }
@@ -46,7 +50,10 @@ type encounterProposalDeleter interface {
 	Delete(ctx context.Context, id string) error
 }
 type applicationAppender interface {
-	Append(ctx context.Context, epID string, app types.Application) error
+	AppendApplication(ctx context.Context, epID string, app types.Application) error
+}
+type applicationDeleter interface {
+	DeleteApplication(ctx context.Context, epID string, appID string) error
 }
 type leadingGroupsLister interface {
 	LeadingGroups(ctx context.Context, token string) ([]types.Group, error)
@@ -63,6 +70,7 @@ func New(
 	epUpdater encounterProposalUpdater,
 	epDeleter encounterProposalDeleter,
 	appAppender applicationAppender,
+	appDeleter applicationDeleter,
 	leadingGroupsLister leadingGroupsLister,
 	leaderChecker groupLeaderChecker,
 ) API {
@@ -74,6 +82,7 @@ func New(
 		epUpdater:           epUpdater,
 		epDeleter:           epDeleter,
 		appAppender:         appAppender,
+		appDeleter:          appDeleter,
 		leadingGroupsLister: leadingGroupsLister,
 		leaderChecker:       leaderChecker,
 	}
@@ -88,9 +97,14 @@ func (api API) EPCreatorGroupLeaderCheckerMiddleware() gin.HandlerFunc {
 			return apiErrorUnauthorized
 		}
 
-		token := ctx.GetString(authenticatedUserToken)
-		isLeader, err := api.leaderChecker.IsGroupLeader(ctx, token, ep.Creator.ID)
-		if err != nil || !isLeader {
+		userID := ctx.GetString(AuthenticatedUserID)
+		isLeader := false
+		for _, leader := range ep.Creator.Leaders {
+			if leader.ID == userID {
+				isLeader = true
+			}
+		}
+		if !isLeader {
 			return apiErrorUnauthorized
 		}
 
@@ -108,7 +122,7 @@ func (api API) EPCreationHandler() gin.HandlerFunc {
 		}
 
 		// check that user sending request is leader of creator group
-		token := ctx.GetString(authenticatedUserToken)
+		token := ctx.GetString(AuthenticatedUserToken)
 		isLeader, err := api.leaderChecker.IsGroupLeader(ctx, token, ep.Creator.ID)
 		if err != nil || !isLeader {
 			return result{s: apiErrorUnauthorized}
@@ -148,7 +162,7 @@ func (api API) EPReadingAllHandler() gin.HandlerFunc {
 func (api API) EPReadingByUserHandler() gin.HandlerFunc {
 	return jsonHandler(func(ctx *gin.Context) result {
 
-		token := ctx.GetString(authenticatedUserToken)
+		token := ctx.GetString(AuthenticatedUserToken)
 		leadingGroups, err := api.leadingGroupsLister.LeadingGroups(ctx, token)
 		if err != nil {
 			return er(http.StatusNotFound, err)
@@ -234,7 +248,7 @@ func (api API) AppCreationHandler() gin.HandlerFunc {
 		}
 
 		// check if user is a leader of the applicant group
-		token := ctx.GetString(authenticatedUserToken)
+		token := ctx.GetString(AuthenticatedUserToken)
 		isLeader, err := api.leaderChecker.IsGroupLeader(ctx, token, app.Applicant.ID)
 		if err != nil {
 			return er(http.StatusUnauthorized, err)
@@ -245,12 +259,28 @@ func (api API) AppCreationHandler() gin.HandlerFunc {
 
 		// update EP with the new application
 		epID := ctx.Param(EPID)
-		err = api.appAppender.Append(ctx, epID, app)
+		err = api.appAppender.AppendApplication(ctx, epID, app)
 		if err != nil {
 			return er(http.StatusNotFound, err)
 		}
 
 		return ok(message, fmt.Sprintf("applied for encounter proposal %s", epID))
+
+	})
+}
+
+func (api API) AppDeletionHandler() gin.HandlerFunc {
+	return jsonHandler(func(ctx *gin.Context) result {
+
+		epID := ctx.Param(EPID)
+		appID := ctx.Param(AppID)
+
+		err := api.appDeleter.DeleteApplication(ctx, epID, appID)
+		if err != nil {
+			return er(http.StatusNotFound, err)
+		}
+
+		return ok(message, fmt.Sprintf("deleted application %s of encounter proposal %s", appID, epID))
 
 	})
 }
@@ -318,7 +348,6 @@ func next() status {
 }
 
 var (
-	authenticatedUserToken = "token"
 	encounterProposal      = "encounterProposal"
 	encounterProposalSlice = "encounterProposals"
 	message                = "message"

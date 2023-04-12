@@ -118,13 +118,30 @@ func (m Mongo) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
-func (m Mongo) Append(ctx context.Context, epID string, app types.Application) error {
+func (m Mongo) AppendApplication(ctx context.Context, epID string, app types.Application) error {
 	hex, err := primitive.ObjectIDFromHex(epID)
 	if err != nil {
 		return err
 	}
 
 	result, err := m.collection.UpdateOne(ctx, bson.M{"_id": hex}, bson.M{"$push": bson.M{"applications": app}})
+	if err != nil {
+		return err
+	}
+	if result.ModifiedCount != 1 {
+		return errors.New("no such encounter proposal")
+	}
+
+	return nil
+}
+
+func (m Mongo) DeleteApplication(ctx context.Context, epID string, appID string) error {
+	hex, err := primitive.ObjectIDFromHex(epID)
+	if err != nil {
+		return err
+	}
+
+	result, err := m.collection.UpdateOne(ctx, bson.M{"_id": hex}, bson.M{"$pull": bson.M{"applications": bson.M{"applicant._id": appID}}})
 	if err != nil {
 		return err
 	}
