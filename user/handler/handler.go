@@ -34,28 +34,27 @@ type Updater interface {
 type Deleter interface {
 	Delete(ctx context.Context, id string) error
 }
+type UpdateMessenger interface {
+	SendUserUpdatedMessage(ctx context.Context, user types.User) error
+}
+type DeleteMessenger interface {
+	SendUserDeletedMessage(ctx context.Context, userID string) error
+}
 
 // implementation
 
 type Handler struct {
-	hasher        PasswordHasher
-	verifier      PasswordVerifier
-	creator       Creator
-	byIDReader    ByIDReader
-	byEmailReader ByEmailReader
-	updater       Updater
-	deleter       Deleter
-	jwtSecret     []byte
+	hasher              PasswordHasher
+	verifier            PasswordVerifier
+	creator             Creator
+	byIDReader          ByIDReader
+	byEmailReader       ByEmailReader
+	updater             Updater
+	deleter             Deleter
+	userUpdateMessenger UpdateMessenger
+	userDeleteMessenger DeleteMessenger
+	jwtSecret           []byte
 }
-
-const jwtTTL = time.Hour * 24 * 7
-const paramKeyAuthenticatedUserID = "AuthenticatedUserID"
-
-var messageErrorUnauthorized = gin.H{"error": "unauthorized"}
-var messageErrorMissingAuthorizationHeader = gin.H{"error": "missing authorization header"}
-var messageErrorInvalidToken = gin.H{"error": "invalid or expired token"}
-var messageErrorUserNotFound = gin.H{"error": "user not found"}
-var messageErrorMissingUserData = gin.H{"error": "missing user data"}
 
 func New(
 	hasher PasswordHasher,
@@ -65,17 +64,21 @@ func New(
 	byEmailReader ByEmailReader,
 	updater Updater,
 	deleter Deleter,
+	userUpdateMessenger UpdateMessenger,
+	userDeleteMessenger DeleteMessenger,
 	jwtSecret []byte,
 ) *Handler {
 	return &Handler{
-		hasher:        hasher,
-		verifier:      verifier,
-		creator:       creator,
-		byIDReader:    byIDReader,
-		byEmailReader: byEmailReader,
-		updater:       updater,
-		deleter:       deleter,
-		jwtSecret:     jwtSecret,
+		hasher:              hasher,
+		verifier:            verifier,
+		creator:             creator,
+		byIDReader:          byIDReader,
+		byEmailReader:       byEmailReader,
+		updater:             updater,
+		deleter:             deleter,
+		userUpdateMessenger: userUpdateMessenger,
+		userDeleteMessenger: userDeleteMessenger,
+		jwtSecret:           jwtSecret,
 	}
 }
 
@@ -232,6 +235,12 @@ func (sh Handler) UpdateUser() gin.HandlerFunc {
 			return
 		}
 
+		err = sh.userUpdateMessenger.SendUserUpdatedMessage(ctx, user)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, messageErrorMessageBroker)
+			return
+		}
+
 		ctx.JSON(http.StatusOK, gin.H{"user": user})
 	}
 }
@@ -245,6 +254,25 @@ func (sh Handler) DeleteUser() gin.HandlerFunc {
 			ctx.JSON(http.StatusNotFound, messageErrorUserNotFound)
 			return
 		}
+
+		err = sh.userDeleteMessenger.SendUserDeletedMessage(ctx, id)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, messageErrorMessageBroker)
+			return
+		}
+
 		ctx.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("deleted user %s", id)})
 	}
 }
+
+const jwtTTL = time.Hour * 24 * 7
+const paramKeyAuthenticatedUserID = "AuthenticatedUserID"
+
+var (
+	messageErrorUnauthorized               = gin.H{"error": "unauthorized"}
+	messageErrorMissingAuthorizationHeader = gin.H{"error": "missing authorization header"}
+	messageErrorInvalidToken               = gin.H{"error": "invalid or expired token"}
+	messageErrorUserNotFound               = gin.H{"error": "user not found"}
+	messageErrorMissingUserData            = gin.H{"error": "missing user data"}
+	messageErrorMessageBroker              = gin.H{"error": "unable to send message to broker"}
+)
