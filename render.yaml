@@ -26,7 +26,7 @@ services:
         value: users-deletes
       - fromGroup: gin-server
       - fromGroup: gaef-mongo-uri
-      - fromGroup: gaef-rabbitmq-password-uri
+      - fromGroup: gaef-rabbitmq-uri
   - type: web
     name: gaef-group-service
     env: docker
