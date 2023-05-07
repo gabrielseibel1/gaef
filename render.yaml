@@ -1,5 +1,18 @@
 services:
   - type: web
+    name: gaef-rabbitmq
+    env: docker
+    dockerContext: ./rabbitmq
+    dockerfilePath: ./rabbitmq/Dockerfile
+    envVars:
+      - key: RABBITMQ_ERLANG_COOKIE
+        generateValue: true
+      - fromGroup: gaef-rabbitmq-password-uri
+    disk:
+      name: rabbitmq
+      mountPath: /var/lib/rabbitmq
+      sizeGB: 10
+  - type: web
     name: gaef-user-service
     env: docker
     dockerContext: .
@@ -20,8 +33,13 @@ services:
         value: users
       - key: MONGODB_COLLECTION
         value: users
+      - key: AMQP_EXCHANGE_UPDATES
+        value: users-updates
+      - key: AMQP_EXCHANGE_DELETES
+        value: users-deletes
       - fromGroup: gin-server
       - fromGroup: gaef-mongo-uri
+      - fromGroup: gaef-rabbitmq-password-uri
   - type: web
     name: gaef-group-service
     env: docker

@@ -1,7 +1,13 @@
 services:
+  message-broker:
+    image: rabbitmq:3-management
+    #todo: have a configuration file
+    ports:
+      - "5672:5672"
+      - "15672:15672"
   user-service:
     build:
-      context: .
+      context: ..
       dockerfile: user/_debug/Dockerfile
     security_opt:
       - "seccomp:unconfined"
@@ -13,6 +19,9 @@ services:
     environment:
       - PORT=8080
       - JWT_SECRET=debug-jwt-secret
+      - AMQP_URI=amqp://guest:guest@message-broker:5672/
+      - AMQP_EXCHANGE_UPDATES=users-updates
+      - AMQP_EXCHANGE_DELETES=users-deletes
       - MONGODB_URI=mongodb://user-mongodb:27017
       - MONGODB_DATABASE=users
       - MONGODB_COLLECTION=users
@@ -22,7 +31,7 @@ services:
       - user-mongodb-data:/data/db
   group-service:
     build:
-      context: .
+      context: ..
       dockerfile: group/Dockerfile
     ports:
       - "8081:8080"
@@ -39,7 +48,7 @@ services:
       - group-mongodb-data:/data/db
   encounter-proposal-service:
     build:
-      context: .
+      context: ..
       dockerfile: encounter-proposal/Dockerfile
     ports:
       - "8082:8080"
@@ -57,7 +66,7 @@ services:
       - encounter-proposal-mongodb-data:/data/db
   encounter-service:
     build:
-      context: .
+      context: ..
       dockerfile: encounter/Dockerfile
     ports:
       - "8083:8080"

@@ -4,20 +4,28 @@ Groups And Encounters Finder
 
 ## Running
 
-```
-docker compose up -d --build
-docker compose down
+```shell
+docker compose -f compose/docker-compose.yml up -d --build
+docker compose -f compose/docker-compose.yml down
 ```
 
 ## Debugging
 
-```
-docker compose -f docker-compose-debug.yml up -d --build
-docker compose -f docker-compose-debug.yml down
+```shell
+docker compose -f compose/docker-compose-debug-<service>.yml up -d --build
+docker compose -f compose/docker-compose-debug-<service>.yml down
 ```
 
 ## Testing
 
+### Unit
+
 ```shell
-./test.sh
+test/unit_test.sh
+```
+
+### Integration
+
+```shell
+test/integration_test.sh
 ```

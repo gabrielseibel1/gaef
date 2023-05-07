@@ -35,7 +35,18 @@ func TestHandler_JWTAuthMiddleware_OK(t *testing.T) {
 	c.AddParam("id", "1234567890")
 
 	// run code under test
-	New(nil, nil, nil, nil, nil, nil, nil, []byte("test")).JWTAuthMiddleware()(c)
+	New(
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		[]byte("test"),
+	).JWTAuthMiddleware()(c)
 
 	// assertions
 	if got := w.Body.String(); got != "" {
@@ -64,7 +75,18 @@ func TestHandler_JWTAuthMiddleware_NoJWT(t *testing.T) {
 	c.AddParam("id", "1234567890")
 
 	// run code under test
-	New(nil, nil, nil, nil, nil, nil, nil, []byte("test")).JWTAuthMiddleware()(c)
+	New(
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		[]byte("test"),
+	).JWTAuthMiddleware()(c)
 
 	// assertions
 	var resp struct {
@@ -107,7 +129,18 @@ func TestHandler_JWTAuthMiddleware_InvalidJWTUser(t *testing.T) {
 	c.AddParam("id", "1234567890")
 
 	// run code under test
-	New(nil, nil, nil, nil, nil, nil, nil, []byte("test")).JWTAuthMiddleware()(c)
+	New(
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		[]byte("test"),
+	).JWTAuthMiddleware()(c)
 
 	// assertions
 	var resp struct {
@@ -150,7 +183,18 @@ func TestHandler_JWTAuthMiddleware_InvalidJWTSig(t *testing.T) {
 	c.AddParam("id", "1234567890")
 
 	// run code under test
-	New(nil, nil, nil, nil, nil, nil, nil, []byte("not-the-one-used-to-sign-token")).JWTAuthMiddleware()(c)
+	New(
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		[]byte("not-the-one-used-to-sign-token"),
+	).JWTAuthMiddleware()(c)
 
 	// assertions
 	var resp struct {
@@ -189,7 +233,18 @@ func TestHandler_JWTAuthMiddleware_EmptyJWTClaims(t *testing.T) {
 	c.AddParam("id", "1234567890")
 
 	// run code under test
-	New(nil, nil, nil, nil, nil, nil, nil, []byte("test")).JWTAuthMiddleware()(c)
+	New(
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		[]byte("test"),
+	).JWTAuthMiddleware()(c)
 
 	// assertions
 	var resp struct {
@@ -296,7 +351,18 @@ func TestHandler_Signup_OK(t *testing.T) {
 	c.Request = req
 
 	// run code under test
-	New(mockHasher, nil, mockCreator, nil, mockByEmailReader, nil, nil, nil).Signup()(c)
+	New(
+		mockHasher,
+		nil,
+		mockCreator,
+		nil,
+		mockByEmailReader,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+	).Signup()(c)
 
 	// assertions
 	var resp struct {
@@ -370,7 +436,18 @@ func TestHandler_Signup_ReaderNilError(t *testing.T) {
 	c.Request = req
 
 	// run code under test
-	New(mockHasher, nil, mockCreator, nil, mockByEmailReader, nil, nil, nil).Signup()(c)
+	New(
+		mockHasher,
+		nil,
+		mockCreator,
+		nil,
+		mockByEmailReader,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+	).Signup()(c)
 
 	// assertions
 	var resp struct {
@@ -429,7 +506,18 @@ func TestHandler_Signup_HasherError(t *testing.T) {
 	c.Request = req
 
 	// run code under test
-	New(mockHasher, nil, mockCreator, nil, mockByEmailReader, nil, nil, nil).Signup()(c)
+	New(
+		mockHasher,
+		nil,
+		mockCreator,
+		nil,
+		mockByEmailReader,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+	).Signup()(c)
 
 	// assertions
 	var resp struct {
@@ -491,7 +579,18 @@ func TestHandler_Signup_CreatorError(t *testing.T) {
 	c.Request = req
 
 	// run code under test
-	New(mockHasher, nil, mockCreator, nil, mockByEmailReader, nil, nil, nil).Signup()(c)
+	New(
+		mockHasher,
+		nil,
+		mockCreator,
+		nil,
+		mockByEmailReader,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+	).Signup()(c)
 
 	// assertions
 	var resp struct {
@@ -581,7 +680,18 @@ func TestHandler_Login_OK(t *testing.T) {
 	jwtSecret := []byte("test")
 
 	// run code under test
-	New(nil, mockVerifier, nil, nil, mockByEmailReader, nil, nil, jwtSecret).Login()(c)
+	New(
+		nil,
+		mockVerifier,
+		nil,
+		nil,
+		mockByEmailReader,
+		nil,
+		nil,
+		nil,
+		nil,
+		jwtSecret,
+	).Login()(c)
 
 	// assertions
 	var resp struct {
@@ -673,7 +783,18 @@ func TestHandler_Login_MissingEmail(t *testing.T) {
 	jwtSecret := []byte("test")
 
 	// run code under test
-	New(nil, mockVerifier, nil, nil, mockByEmailReader, nil, nil, jwtSecret).Login()(c)
+	New(
+		nil,
+		mockVerifier,
+		nil,
+		nil,
+		mockByEmailReader,
+		nil,
+		nil,
+		nil,
+		nil,
+		jwtSecret,
+	).Login()(c)
 
 	// assertions
 	var resp struct {
@@ -725,7 +846,18 @@ func TestHandler_Login_MissingPassword(t *testing.T) {
 	jwtSecret := []byte("test")
 
 	// run code under test
-	New(nil, mockVerifier, nil, nil, mockByEmailReader, nil, nil, jwtSecret).Login()(c)
+	New(
+		nil,
+		mockVerifier,
+		nil,
+		nil,
+		mockByEmailReader,
+		nil,
+		nil,
+		nil,
+		nil,
+		jwtSecret,
+	).Login()(c)
 
 	// assertions
 	var resp struct {
@@ -779,7 +911,18 @@ func TestHandler_Login_ReaderError(t *testing.T) {
 	jwtSecret := []byte("test")
 
 	// run code under test
-	New(nil, mockVerifier, nil, nil, mockByEmailReader, nil, nil, jwtSecret).Login()(c)
+	New(
+		nil,
+		mockVerifier,
+		nil,
+		nil,
+		mockByEmailReader,
+		nil,
+		nil,
+		nil,
+		nil,
+		jwtSecret,
+	).Login()(c)
 
 	// assertions
 	var resp struct {
@@ -839,7 +982,18 @@ func TestHandler_Login_VerifierError(t *testing.T) {
 	jwtSecret := []byte("test")
 
 	// run code under test
-	New(nil, mockVerifier, nil, nil, mockByEmailReader, nil, nil, jwtSecret).Login()(c)
+	New(
+		nil,
+		mockVerifier,
+		nil,
+		nil,
+		mockByEmailReader,
+		nil,
+		nil,
+		nil,
+		nil,
+		jwtSecret,
+	).Login()(c)
 
 	// assertions
 	var resp struct {
@@ -877,7 +1031,18 @@ func TestHandler_GetIDFromToken(t *testing.T) {
 	c.Set("AuthenticatedUserID", dummyID)
 
 	// run code under test
-	New(nil, nil, nil, nil, nil, nil, nil, nil).GetIDFromToken()(c)
+	New(
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+	).GetIDFromToken()(c)
 
 	// assertions
 	var resp struct {
@@ -927,7 +1092,18 @@ func TestHandler_GetUserFromID_OK(t *testing.T) {
 	c.Set("AuthenticatedUserID", dummyID)
 
 	// run code under test
-	New(nil, nil, nil, mockReader, nil, nil, nil, nil).GetUserFromID()(c)
+	New(
+		nil,
+		nil,
+		nil,
+		mockReader,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+	).GetUserFromID()(c)
 
 	// assertions
 	var resp struct {
@@ -967,7 +1143,18 @@ func TestHandler_GetUserFromID_ReaderError(t *testing.T) {
 	c.Set("AuthenticatedUserID", dummyID)
 
 	// run code under test
-	New(nil, nil, nil, mockReader, nil, nil, nil, nil).GetUserFromID()(c)
+	New(
+		nil,
+		nil,
+		nil,
+		mockReader,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+	).GetUserFromID()(c)
 
 	// assertions
 	var resp struct {
@@ -1006,15 +1193,29 @@ func (mu *mockUpdater) Update(ctx context.Context, user types.User) error {
 	return mu.err
 }
 
+type mockUpdateMessenger struct {
+	// receive
+	user types.User
+	ctx  context.Context
+
+	// return
+	err error
+}
+
+func (m *mockUpdateMessenger) SendUserUpdatedMessage(ctx context.Context, user types.User) error {
+	m.ctx = ctx
+	m.user = user
+	return m.err
+}
+
 func TestHandler_UpdateUser_OK(t *testing.T) {
 	// prepare test setup
-	mockUpdater := &mockUpdater{
-		user: types.User{
-			ID:   "mockReaderID",
-			Name: "mockReaderName",
-		},
-		err: nil,
+	dummyUser := types.User{
+		ID:   "mockReaderID",
+		Name: "mockReaderName",
 	}
+	mockUpdater := &mockUpdater{user: dummyUser}
+	mockUpdateMessenger := &mockUpdateMessenger{user: dummyUser}
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	dummyID := "dummyID"
@@ -1033,7 +1234,18 @@ func TestHandler_UpdateUser_OK(t *testing.T) {
 	c.Request = req
 
 	// run code under test
-	New(nil, nil, nil, nil, nil, mockUpdater, nil, nil).UpdateUser()(c)
+	New(
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		mockUpdater,
+		nil,
+		mockUpdateMessenger,
+		nil,
+		nil,
+	).UpdateUser()(c)
 
 	// assertions
 	var resp struct {
@@ -1054,6 +1266,12 @@ func TestHandler_UpdateUser_OK(t *testing.T) {
 	}
 	if got, want := mockUpdater.ctx, c; got != want {
 		t.Errorf("mockUpdater.Update() received id %v, want %v", got, want)
+	}
+	if got, want := mockUpdateMessenger.user, reqBody; got != want {
+		t.Errorf("mockUpdateMessenger received user %s, want %s", got, want)
+	}
+	if got, want := mockUpdateMessenger.ctx, c; got != want {
+		t.Errorf("mockUpdateMessenger received id %v, want %v", got, want)
 	}
 }
 
@@ -1083,7 +1301,18 @@ func TestHandler_UpdateUser_MismatchedIDs(t *testing.T) {
 	c.Request = req
 
 	// run code under test
-	New(nil, nil, nil, nil, nil, mockUpdater, nil, nil).UpdateUser()(c)
+	New(
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		mockUpdater,
+		nil,
+		nil,
+		nil,
+		nil,
+	).UpdateUser()(c)
 
 	// assertions
 	var resp struct {
@@ -1128,7 +1357,18 @@ func TestHandler_UpdateUser_UpdaterError(t *testing.T) {
 	c.Request = req
 
 	// run code under test
-	New(nil, nil, nil, nil, nil, mockUpdater, nil, nil).UpdateUser()(c)
+	New(
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		mockUpdater,
+		nil,
+		nil,
+		nil,
+		nil,
+	).UpdateUser()(c)
 
 	// assertions
 	var resp struct {
@@ -1152,6 +1392,76 @@ func TestHandler_UpdateUser_UpdaterError(t *testing.T) {
 	}
 }
 
+func TestHandler_UpdateUser_MessengerError(t *testing.T) {
+	// prepare test setup
+	dummyUser := types.User{
+		ID:   "mockReaderID",
+		Name: "mockReaderName",
+	}
+	mockUpdater := &mockUpdater{user: dummyUser}
+	mockUpdateMessenger := &mockUpdateMessenger{
+		user: dummyUser,
+		err:  errors.New("mock messenger error"),
+	}
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	dummyID := "dummyID"
+	c.Set("AuthenticatedUserID", dummyID)
+	reqBody := types.User{
+		ID:   dummyID,
+		Name: "bodyName",
+	}
+	reqBodyJson, err := json.Marshal(reqBody)
+	if err != nil {
+		t.Error("failed to marshal json")
+	}
+	req := &http.Request{
+		Body: io.NopCloser(bytes.NewBufferString(string(reqBodyJson))),
+	}
+	c.Request = req
+
+	// run code under test
+	New(
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		mockUpdater,
+		nil,
+		mockUpdateMessenger,
+		nil,
+		nil,
+	).UpdateUser()(c)
+
+	// assertions
+	var resp struct {
+		Err string `json:"error"`
+	}
+	err = json.NewDecoder(w.Result().Body).Decode(&resp)
+	if err != nil {
+		t.Errorf("got error %s decoding response, want nil", err)
+	}
+	if got, want := resp.Err, "unable to send message to broker"; got != want {
+		t.Errorf("got response body id %s, want %s", got, want)
+	}
+	if got, want := w.Code, http.StatusInternalServerError; got != want {
+		t.Errorf("got status code %d, want %d", got, want)
+	}
+	if got, want := mockUpdater.user, reqBody; got != want {
+		t.Errorf("mockUpdater.Update() received user %s, want %s", got, want)
+	}
+	if got, want := mockUpdater.ctx, c; got != want {
+		t.Errorf("mockUpdater.Update() received id %v, want %v", got, want)
+	}
+	if got, want := mockUpdateMessenger.user, reqBody; got != want {
+		t.Errorf("mockUpdateMessenger received user %s, want %s", got, want)
+	}
+	if got, want := mockUpdateMessenger.ctx, c; got != want {
+		t.Errorf("mockUpdateMessenger received id %v, want %v", got, want)
+	}
+}
+
 type mockDeleter struct {
 	// receive
 	id  string
@@ -1167,18 +1477,43 @@ func (md *mockDeleter) Delete(ctx context.Context, id string) error {
 	return md.err
 }
 
+type mockDeleteMessenger struct {
+	// receive
+	userID string
+	ctx    context.Context
+
+	// return
+	err error
+}
+
+func (m *mockDeleteMessenger) SendUserDeletedMessage(ctx context.Context, userID string) error {
+	m.ctx = ctx
+	m.userID = userID
+	return m.err
+}
+
 func TestHandler_Delete_OK(t *testing.T) {
 	// prepare test setup
-	mockDeleter := &mockDeleter{
-		err: nil,
-	}
+	mockDeleter := &mockDeleter{}
+	mockMessenger := &mockDeleteMessenger{}
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	dummyID := "dummyID"
 	c.Set("AuthenticatedUserID", dummyID)
 
 	// run code under test
-	New(nil, nil, nil, nil, nil, nil, mockDeleter, nil).DeleteUser()(c)
+	New(
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		mockDeleter,
+		nil,
+		mockMessenger,
+		nil,
+	).DeleteUser()(c)
 
 	// assertions
 	var resp struct {
@@ -1200,6 +1535,12 @@ func TestHandler_Delete_OK(t *testing.T) {
 	if got, want := mockDeleter.ctx, c; got != want {
 		t.Errorf("mockDeleter.DeleteUser() received id %v, want %v", got, want)
 	}
+	if got, want := mockMessenger.userID, dummyID; got != want {
+		t.Errorf("mockMessenger received user %s, want %s", got, want)
+	}
+	if got, want := mockMessenger.ctx, c; got != want {
+		t.Errorf("mockMessenger received id %v, want %v", got, want)
+	}
 }
 
 func TestHandler_Delete_DeleterError(t *testing.T) {
@@ -1213,7 +1554,18 @@ func TestHandler_Delete_DeleterError(t *testing.T) {
 	c.Set("AuthenticatedUserID", dummyID)
 
 	// run code under test
-	New(nil, nil, nil, nil, nil, nil, mockDeleter, nil).DeleteUser()(c)
+	New(
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		mockDeleter,
+		nil,
+		nil,
+		nil,
+	).DeleteUser()(c)
 
 	// assertions
 	var resp struct {
@@ -1234,5 +1586,56 @@ func TestHandler_Delete_DeleterError(t *testing.T) {
 	}
 	if got, want := mockDeleter.ctx, c; got != want {
 		t.Errorf("mockDeleter.DeleteUser() received id %v, want %v", got, want)
+	}
+}
+
+func TestHandler_Delete_MessengerError(t *testing.T) {
+	// prepare test setup
+	mockDeleter := &mockDeleter{}
+	mockMessenger := &mockDeleteMessenger{err: errors.New("mock messenger error")}
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	dummyID := "dummyID"
+	c.Set("AuthenticatedUserID", dummyID)
+
+	// run code under test
+	New(
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		mockDeleter,
+		nil,
+		mockMessenger,
+		nil,
+	).DeleteUser()(c)
+
+	// assertions
+	var resp struct {
+		Err string `json:"error"`
+	}
+	err := json.NewDecoder(w.Result().Body).Decode(&resp)
+	if err != nil {
+		t.Errorf("got error %s decoding response, want nil", err)
+	}
+	if got, want := resp.Err, "unable to send message to broker"; got != want {
+		t.Errorf("got message %s, want %s", got, want)
+	}
+	if got, want := w.Code, http.StatusInternalServerError; got != want {
+		t.Errorf("got status code %d, want %d", got, want)
+	}
+	if got, want := mockDeleter.id, dummyID; got != want {
+		t.Errorf("mockDeleter.DeleteUser() received user %s, want %s", got, want)
+	}
+	if got, want := mockDeleter.ctx, c; got != want {
+		t.Errorf("mockDeleter.DeleteUser() received id %v, want %v", got, want)
+	}
+	if got, want := mockMessenger.userID, dummyID; got != want {
+		t.Errorf("mockMessenger received user %s, want %s", got, want)
+	}
+	if got, want := mockMessenger.ctx, c; got != want {
+		t.Errorf("mockMessenger received id %v, want %v", got, want)
 	}
 }
