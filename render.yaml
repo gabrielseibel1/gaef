@@ -4,6 +4,11 @@ services:
     env: docker
     dockerContext: ./rabbitmq
     dockerfilePath: ./rabbitmq/Dockerfile
+    region: oregon
+    plan: free
+    buildFilter:
+      paths:
+        - rabbitmq/**
     envVars:
       - key: RABBITMQ_ERLANG_COOKIE
         generateValue: true
