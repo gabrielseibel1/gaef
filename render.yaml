@@ -8,10 +8,6 @@ services:
       - key: RABBITMQ_ERLANG_COOKIE
         generateValue: true
       - fromGroup: gaef-rabbitmq-password-uri
-    disk:
-      name: rabbitmq
-      mountPath: /var/lib/rabbitmq
-      sizeGB: 10
   - type: web
     name: gaef-user-service
     env: docker
